@@ -80,7 +80,8 @@ async function waitFor(peer, predicate, attempts = 100) {
 const map = require('../server/maps/world_server.json');
 const Types = require('../shared/js/gametypes');
 const blocked = new Set(map.collisions);
-for (const [index,kind] of Object.entries(map.staticEntities)) if (Types.isNpc(Types.getKindFromString(kind))) blocked.add(Number(index)-1);
+// The original server spawns static entities at tileIndexToGridPosition(index).x + 1.
+for (const [index,kind] of Object.entries(map.staticEntities)) if (Types.isNpc(Types.getKindFromString(kind))) blocked.add(Number(index));
 for (const npc of require('../shared/content/social.json').services) if (npc.position) blocked.add(npc.position.y*map.width+npc.position.x);
 function route(from, to, radius = 0) {
     const queue = [[...from]], previous = new Map([[from.join(','),null]]);

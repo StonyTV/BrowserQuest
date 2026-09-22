@@ -474,19 +474,6 @@ define(['player', 'entityfactory', 'lib/bison'], function(Player, EntityFactory,
                               localStorage.getItem('bq-token') || '']);
         },
 
-        sendMove: function(x, y) {
-            this.sendMessage([Types.Messages.MOVE,
-                              x,
-                              y]);
-        },
-    
-        sendLootMove: function(item, x, y) {
-            this.sendMessage([Types.Messages.LOOTMOVE,
-                              x,
-                              y,
-                              item.id]);
-        },
-    
         sendAggro: function(mob) {
             this.sendMessage([Types.Messages.AGGRO,
                               mob.id]);
@@ -526,10 +513,6 @@ define(['player', 'entityfactory', 'lib/bison'], function(Player, EntityFactory,
         sendWho: function(ids) {
             ids.unshift(Types.Messages.WHO);
             this.sendMessage(ids);
-        },
-    
-        sendZone: function() {
-            this.sendMessage([Types.Messages.ZONE]);
         },
     
         sendOpen: function(chest) {

@@ -17,6 +17,7 @@ var cls = require("./lib/class"),
     Formulas = require("./formulas"),
     RPG = require("./profiles"),
     Gameplay = require("./domain/gameplay"),
+    Movement = require("./domain/movement"),
     SocialContent = require("../../shared/content/social.json"),
     Types = require("../../shared/js/gametypes");
 
@@ -52,6 +53,7 @@ module.exports = World = cls.Class.extend({
         
         this.zoneGroupsReady = false;
         this.gameplay = new Gameplay(this);
+        this.movement = new Movement(this);
         
         this.onPlayerConnect(function(player) {
             player.onRequestPosition(function() {
@@ -93,7 +95,6 @@ module.exports = World = cls.Class.extend({
             };
 
             player.onMove(move_callback);
-            player.onLootMove(move_callback);
             
             player.onZone(function() {
                 var hasChangedGroups = self.handleEntityGroupMembership(player);
@@ -200,6 +201,7 @@ module.exports = World = cls.Class.extend({
         var updateCount = 0;
         this.tick = setInterval(function() {
             if (self.server.commands.pending || self.server.commands.error || self.server.stopping) return;
+            self.movement.tick();
             self.processCombat();
             self.processGroups();
             self.processQueues();

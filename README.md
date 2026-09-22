@@ -1,4 +1,4 @@
-# BrowserQuest Revival — V2 sociale · jalon 0.3 alpha 2
+# BrowserQuest Revival — V2 sociale · jalon 0.3 alpha 3
 
 Reprise jouable de [Mozilla BrowserQuest](https://github.com/mozilla/BrowserQuest), dans un dépôt indépendant. Canvas 2D, JavaScript, Node et WebSocket. Le rendu pixel art et le monde original restent en place ; aucun React n'est nécessaire au moteur.
 
@@ -55,7 +55,9 @@ L'ancien empaquetage `bin/build.sh` a été remplacé par les fichiers servis di
 
 Le Canvas conserve les sprites et la carte BrowserQuest. La caméra suit le personnage sur tout l’écran ; le HUD et les panneaux DOM passent au-dessus. Les vues sont séparées en `client/js/ui/{items,social,chat,dom}.js`, avec un rendu SVG autonome pour les blasons. Le serveur regroupe les règles dans `server/js/domain/{gameplay,social,bank,rules}.js`. Coûts, capacités, canaux et services sont déclarés dans `shared/content/social.json`.
 
-Ce jalon valide le socle social ; **le goal V2 reste actif**. MongoDB est désormais le stockage par défaut, avec migration et transactions vérifiées. L’autorité complète du mouvement, progression/classes, métiers/craft et percepteurs restent à réaliser. [Le suivi V2](docs/V2.md) distingue les preuves obtenues et le travail restant.
+Ce jalon valide le socle social ; **le goal V2 reste actif**. MongoDB est le stockage par défaut, avec migration et transactions vérifiées. Les chemins des joueurs sont validés et exécutés par le serveur ; le client conserve une animation prédictive. La poursuite/agression autonome des monstres, progression/classes, métiers/craft et percepteurs restent à réaliser. [Le suivi V2](docs/V2.md) distingue les preuves obtenues et le travail restant.
+
+`shared/content/movement.json` définit la vitesse et les limites des routes. `server/js/domain/movement.js` possède les positions réelles, avec prédiction et correction dans `client/js/movement.js`. `scripts/browser-movement.js` vérifie les changements de direction, la position vue par un autre joueur et les portes ; une variante avec 150 ms de délai sortant a également été vérifiée.
 
 Pour reproduire le parcours visuel isolé : `node scripts/prepare-social-qa.js`, puis dans un autre terminal `PORT=8086 MONGODB_DATABASE=bq_qa_social npm start`. Exécuter la fonction générée `output/browser-social-run.js` avec Playwright CLI `run-code`, puis `scripts/browser-mobile.js`. La préparation injecte seulement des personnages dans la base MongoDB `bq_qa_social` ; les identifiants des fixtures restent dans `output/`, ignoré par Git.
 

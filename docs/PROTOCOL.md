@@ -1,6 +1,6 @@
-# Protocole 3 du prototype
+# Protocole 4 du prototype
 
-Transport : WebSocket texte JSON, à la même origine que le client. `/status` indique `protocol: 3`. Aucun cookie ou format spécifique à JavaScript n'est nécessaire ; un client Unity peut envoyer les mêmes messages JSON. La compatibilité Unity n'a pas été implémentée ni testée.
+Transport : WebSocket texte JSON, à la même origine que le client. `/status` indique `protocol: 4`. Aucun cookie ou format spécifique à JavaScript n'est nécessaire ; un client Unity peut envoyer les mêmes messages JSON. La compatibilité Unity n'a pas été implémentée ni testée.
 
 Le serveur envoie d'abord le texte `go`. Le client répond :
 
@@ -25,7 +25,26 @@ Les messages originaux 0–26 sont définis dans `shared/js/gametypes.js`, leur 
 
 Limites : message entrant 8 Kio, 100 messages/seconde/connexion, chaînes de 256 caractères maximum, WHO de 511 identifiants maximum. Ping/pong toutes les 30 secondes. Le navigateur doit présenter la même origine ; les clients natifs peuvent omettre Origin. L'origine n'est pas un mécanisme d'authentification.
 
-Avant un client alternatif distribué publiquement, prévoir une négociation de version explicite, des erreurs typées, des snapshots avec tick et les intentions de déplacement. Le protocole 3 conserve encore le mouvement prédictif historique et n'est pas une garantie anti-triche.
+Avant un client alternatif distribué publiquement, prévoir une négociation de version explicite, des erreurs typées et des snapshots globaux avec tick. Le protocole 4 contrôle les routes des joueurs ; l’agression et la poursuite des monstres restent à moderniser. Aucune garantie anti-triche complète n’est établie.
+
+## Déplacement autoritaire
+
+| Identifiant | Sens | Contenu |
+|---|---|---|
+| 34 MOVE_PATH | client → serveur | `[34,sequence,[[x0,y0],[x1,y1],…]]` |
+| 35 POSITION | serveur → propriétaire | `[35,sequence,x,y,status]` |
+| 4 MOVE | serveur → observateurs | `[4,idJoueur,x,y]`, position réellement atteinte |
+| 15 TELEPORT | client → serveur | `[15,xDestination,yDestination]`, via une porte autorisée |
+
+`sequence` est un entier strictement positif croissant pendant la connexion, réinitialisé à la résurrection. Une ancienne séquence est ignorée. La route inclut son origine et au plus 128 cases. Chaque pas est orthogonal, adjacent, dans la carte, hors collision et hors PNJ. Les autres joueurs et les monstres ne bloquent pas les routes côté serveur. Les anciennes commandes entrantes MOVE (4) et LOOTMOVE (5) arrêtent le chemin et renvoient la position réelle ; elles ne déplacent plus le personnage.
+
+La cadence vient de `shared/content/movement.json` : une case toutes les 160 ms au minimum. Un paquet répété ou un tick retardé n’accorde pas de pas supplémentaire. Un changement de direction peut commencer à la position courante, dans la partie de la nouvelle route déjà atteinte, ou jusqu’à trois pas en avance **uniquement sur le chemin précédemment validé**. Ce préfixe doit toujours être parcouru ; il ne téléporte pas le joueur.
+
+Statuts POSITION : `accepted` (chemin validé), `moving` (pas effectué), `arrived`, `rejected`, `teleport`. Le client web anime immédiatement sa proposition et se recale sur une correction. Il ignore les corrections d’une ancienne séquence pour son rendu. Un client alternatif peut simplement attendre les positions serveur. Visibilité, chat de zone et contrôles de proximité utilisent la position réelle.
+
+Une demande de porte reçue avant le dernier pas attend l’arrivée exacte sur la case source. La destination doit correspondre à la porte de la carte. Le client applique la téléportation après POSITION `teleport`. Cliquer une porte sous le personnage permet de l’emprunter explicitement, sans rebond automatique à l’arrivée. Les anciens observateurs reçoivent la téléportation/destruction et les nouveaux reçoivent le spawn.
+
+Recharger le client web après mise à jour depuis le protocole 3. La connexion ne négocie pas encore explicitement les versions. Les pertes prolongées ne sont pas traitées comme un système de rollback complet : une correction interrompt la route et permet de choisir une nouvelle destination.
 
 ## Commandes sociales et bancaires
 

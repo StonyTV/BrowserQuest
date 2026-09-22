@@ -1,0 +1,5 @@
+{
+  "stepMs": 160,
+  "maxPathLength": 128,
+  "maxPredictionSteps": 3
+}

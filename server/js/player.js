@@ -68,6 +68,7 @@ module.exports = Player = Character.extend({
                 self.orientation = Utils.randomOrientation();
                 self.updateHitPoints();
                 self.updatePosition();
+                self.server.movement.reset(self);
                 
                 self.server.addPlayer(self);
                 self.server.enter_callback(self);
@@ -103,33 +104,11 @@ module.exports = Player = Character.extend({
             else if(action === Types.Messages.CHAT) {
                 await self.server.gameplay.handle(self, 'chat.send', {channel: 'zone', body: message[1]});
             }
-            else if(action === Types.Messages.MOVE) {
-                if(self.move_callback) {
-                    var x = message[1],
-                        y = message[2];
-                    
-                    if(self.server.isValidPosition(x, y)) {
-                        self.setPosition(x, y);
-                        self.clearTarget();
-                        
-                        self.broadcast(new Messages.Move(self));
-                        self.move_callback(self.x, self.y);
-                    }
-                }
+            else if(action === Types.Messages.MOVE_PATH) {
+                self.server.movement.request(self, message[1], message[2]);
             }
-            else if(action === Types.Messages.LOOTMOVE) {
-                if(self.lootmove_callback) {
-                    if (!self.server.isValidPosition(message[1], message[2])) return;
-                    self.setPosition(message[1], message[2]);
-                    
-                    var item = self.server.getEntityById(message[3]);
-                    if(item) {
-                        self.clearTarget();
-
-                        self.broadcast(new Messages.LootMove(self, item));
-                        self.lootmove_callback(self.x, self.y);
-                    }
-                }
+            else if(action === Types.Messages.MOVE || action === Types.Messages.LOOTMOVE) {
+                self.server.movement.reject(self);
             }
             else if(action === Types.Messages.AGGRO) {
                 if(self.move_callback) {
@@ -214,20 +193,7 @@ module.exports = Player = Character.extend({
                 }
             }
             else if(action === Types.Messages.TELEPORT) {
-                var x = message[1],
-                    y = message[2];
-                
-                if(self.server.isValidPosition(x, y) && self.server.map.doors.some(function(door) {
-                    return self.near(door, 2) && door.tx === x && door.ty === y;
-                })) {
-                    self.setPosition(x, y);
-                    self.clearTarget();
-                    
-                    self.broadcast(new Messages.Teleport(self));
-                    
-                    self.server.handlePlayerVanish(self);
-                    self.server.pushRelevantEntityListTo(self);
-                }
+                self.server.movement.teleport(self, message[1], message[2]);
             }
             else if(action === Types.Messages.OPEN) {
                 var chest = self.server.getEntityById(message[1]);
@@ -334,10 +300,6 @@ module.exports = Player = Character.extend({
     
     onMove: function(callback) {
         this.move_callback = callback;
-    },
-    
-    onLootMove: function(callback) {
-        this.lootmove_callback = callback;
     },
     
     onZone: function(callback) {

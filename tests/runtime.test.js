@@ -51,7 +51,12 @@ async function connect(name, token = '') {
     socket.on('message', data => {
         if (data.toString() === 'go') return;
         const message = JSON.parse(data);
-        messages.push(...(Array.isArray(message[0]) ? message : [message]));
+        const packets = Array.isArray(message[0]) ? message : [message];
+        messages.push(...packets);
+        for (const packet of packets) {
+            if (packet[0] === 1) peer.position = [packet[3],packet[4]];
+            if (packet[0] === 35) peer.position = [packet[2],packet[3]];
+        }
     });
     const peer = { socket, messages, send: message => socket.send(JSON.stringify(message)) };
     peers.push(peer);
@@ -63,15 +68,47 @@ async function connect(name, token = '') {
     }
     return peer;
 }
-async function waitFor(peer, predicate) {
-    for (let i = 0; i < 100; i++) {
+async function waitFor(peer, predicate, attempts = 100) {
+    for (let i = 0; i < attempts; i++) {
         const index = peer.messages.findIndex(predicate);
         if (index !== -1) return peer.messages.splice(index, 1)[0];
         await new Promise(resolve => setTimeout(resolve, 30));
     }
     throw new Error('Expected message missing (' + predicate.toString() + '): ' + JSON.stringify(peer.messages.filter(message => message[0] !== 33).slice(-6)));
 }
+// Integration clients obey the same path protocol and server clock as the browser.
+const map = require('../server/maps/world_server.json');
+const Types = require('../shared/js/gametypes');
+const blocked = new Set(map.collisions);
+for (const [index,kind] of Object.entries(map.staticEntities)) if (Types.isNpc(Types.getKindFromString(kind))) blocked.add(Number(index)-1);
+for (const npc of require('../shared/content/social.json').services) if (npc.position) blocked.add(npc.position.y*map.width+npc.position.x);
+function route(from, to, radius = 0) {
+    const queue = [[...from]], previous = new Map([[from.join(','),null]]);
+    for(let index=0;index<queue.length && index<10000;index++) {
+        const [x,y]=queue[index];
+        if(Math.abs(x-to[0])+Math.abs(y-to[1])<=radius) {
+            const path=[]; let point=[x,y];
+            while(point) {path.unshift(point);point=previous.get(point.join(','));}
+            return path;
+        }
+        for(const next of [[x+1,y],[x-1,y],[x,y+1],[x,y-1]]) {
+            const [nx,ny]=next, key=next.join(',');
+            if(nx<=0||ny<=0||nx>=map.width||ny>=map.height||blocked.has(ny*map.width+nx)||previous.has(key)) continue;
+            previous.set(key,[x,y]); queue.push(next);
+        }
+    }
+    throw new Error('No test route '+JSON.stringify({from,to,radius}));
+}
+async function moveTo(peer,x,y,radius=0) {
+    const path=route(peer.position,[x,y],radius);
+    const sequence=peer.sequence=(peer.sequence||0)+1;
+    peer.send([34,sequence,path]);
+    const ack=await waitFor(peer,message=>message[0]===35 && message[1]===sequence && ['arrived','rejected'].includes(message[4]),500);
+    assert.equal(ack[4],'arrived','Test route rejected: '+JSON.stringify(path));
+    assert.deepEqual(peer.position,path.at(-1));
+}
 test('HTTP serves game and shared protocol, never server files', async () => {
+    assert.equal((await (await fetch(base + '/status')).json()).protocol, 4);
     assert.equal((await fetch(base)).status, 200);
     assert.equal((await fetch(base + '/shared/js/gametypes.js')).status, 200);
     assert.equal((await fetch(base + '/server/config.json')).status, 404);
@@ -86,7 +123,7 @@ test('two players join with valid health and exchange chat', async () => {
     assert.equal(bob.welcome[5], 80);
     assert.notEqual(alice.welcome[1], bob.welcome[1]);
     await waitFor(alice, message => message[0] === 17 && message[1] === 2);
-    bob.send([4, alice.welcome[3], alice.welcome[4]]);
+    await moveTo(bob, alice.welcome[3], alice.welcome[4]);
     bob.send([21]);
     await new Promise(resolve => setTimeout(resolve, 80));
     alice.send([11, 'Hello world']);
@@ -99,7 +136,7 @@ test('two players join with valid health and exchange chat', async () => {
     assert.equal(status.worlds[0].players, 2);
 });
 test('malformed JSON and invalid envelopes disconnect only their sender', async () => {
-    for (const value of ['{broken', 'null', '{}', '[4,1.5,2]', '[999]']) {
+    for (const value of ['{broken', 'null', '{}', '[4,1.5,2]', '[34,1,[]]', '[34,1,[[1,2.5]]]', '[34,-1,[[1,2]]]', '[999]']) {
         const peer = await connect();
         const closed = once(peer.socket, 'close');
         peer.socket.send(value);
@@ -108,6 +145,22 @@ test('malformed JSON and invalid envelopes disconnect only their sender', async 
     assert.equal((await (await fetch(base + '/status')).json()).ready, true);
 });
 
+test('forged destination, route and door packets cannot enable remote loot', async () => {
+    const hero = await connect('NoTeleport');
+    const start = [...hero.position];
+    const list = await waitFor(hero, message => message[0] === 19);
+    hero.send([20, ...list.slice(1)]);
+    const sword = await waitFor(hero, message => message[0] === 2 && message[2] === 61 && Math.max(Math.abs(message[3]-start[0]),Math.abs(message[4]-start[1])) > 3);
+    for (const packet of [[4,sword[3],sword[4]],[5,sword[3],sword[4],sword[1]],[34,1,[start,[sword[3],sword[4]]]],[15,155,286]]) {
+        hero.send(packet);
+        const rejected = await waitFor(hero, message => message[0] === 35 && message[4] === 'rejected');
+        assert.deepEqual(rejected.slice(2,4),start);
+        hero.send([12,sword[1]]);
+    }
+    await new Promise(resolve => setTimeout(resolve,100));
+    assert.equal(hero.messages.some(message => message[0] === 27),false);
+    assert.deepEqual(hero.position,start);
+});
 test('loot is collected once, equipment is owned, and reconnect restores the bag', async () => {
     const hero = await connect('Collector');
     const list = await waitFor(hero, message => message[0] === 19);
@@ -116,7 +169,7 @@ test('loot is collected once, equipment is owned, and reconnect restores the bag
     hero.send([12, sword[1]]); // Too far away: must not grant any equipment.
     await new Promise(resolve => setTimeout(resolve, 80));
     assert.equal(hero.messages.some(message => message[0] === 27), false);
-    hero.send([4, sword[3], sword[4]]);
+    await moveTo(hero, sword[3], sword[4]);
     hero.send([12, sword[1]]);
     const profile = (await waitFor(hero, message => message[0] === 27))[1];
     assert.equal(profile.items.length, 3);
@@ -149,7 +202,7 @@ test('server schedules creature damage and rewards a kill exactly once', async (
     const map = require('../server/maps/world_server.json');
     const adjacent = [[rat[3] + 1, rat[4]], [rat[3] - 1, rat[4]], [rat[3], rat[4] + 1], [rat[3], rat[4] - 1]]
         .find(([x,y]) => !map.collisions.includes(y * map.width + x));
-    hero.send([4, ...adjacent]);
+    await moveTo(hero, ...adjacent);
     hero.send([6, rat[1]]);
     const damage = await waitFor(hero, message => message[0] === 10 && message[1] < 80);
     assert.ok(damage[1] >= 0); // No HURT message was sent by this client.
@@ -176,7 +229,7 @@ test('a full bag rejects equipment without deleting the world item', async () =>
     const list = await waitFor(hero, message => message[0] === 19);
     hero.send([20, ...list.slice(1)]);
     const sword = await waitFor(hero, message => message[0] === 2 && message[2] === 61);
-    hero.send([4, sword[3], sword[4]]);
+    await moveTo(hero, sword[3], sword[4]);
     hero.send([12, sword[1]]);
     assert.equal((await waitFor(hero, message => message[0] === 30))[2], false);
     hero.send([20, sword[1]]);
@@ -199,7 +252,7 @@ test('guilds, parties and bank enforce ownership, privacy and persistent members
     const list = await waitFor(leader, message => message[0] === 19);
     leader.send([20, ...list.slice(1)]);
     const npc = await waitFor(leader, message => message[0] === 2 && message[2] === 43);
-    leader.send([4, npc[3], npc[4]]);
+    await moveTo(leader, npc[3], npc[4], 1);
     command(leader, 'service.open', {id:npc[1]});
     await event(leader, 'service');
     command(leader, 'guild.create', {name:'Les Veilleurs',tag:'VEIL',crest});
@@ -236,7 +289,7 @@ test('guilds, parties and bank enforce ownership, privacy and persistent members
     command(leader, 'guild.crest', {crest:{...crest,symbol:'stag'}});
     await event(member, 'social', state => state.guild?.crest.symbol === 'stag');
     const guard = await waitFor(leader, message => message[0] === 2 && message[2] === 40 && message[3] === 18 && message[4] === 222);
-    leader.send([4,guard[3],guard[4]]);
+    await moveTo(leader,guard[3],guard[4],1);
     command(leader, 'service.open', {id:guard[1]}); await event(leader, 'service');
     command(leader, 'bank.item', {id:item.id,deposit:true});
     const banked = (await waitFor(leader, message => message[0] === 27 && message[1].bank.items.length === 1))[1];

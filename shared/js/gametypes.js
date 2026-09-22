@@ -35,7 +35,9 @@ Types = {
         LOOT_RESULT: 30,
         COMMAND: 31,
         EVENT: 32,
-        ENTITY_INFO: 33
+        ENTITY_INFO: 33,
+        MOVE_PATH: 34,
+        POSITION: 35
     },
     
     Entities: {

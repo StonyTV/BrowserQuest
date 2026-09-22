@@ -24,6 +24,7 @@ async (page) => {
         });
         await mobile.touchscreen.tap(destination.x,destination.y);
         await mobile.waitForFunction(([x,y])=>__bqGame.player.gridX===x&&__bqGame.player.gridY===y,destination.target,{timeout:15000});
+        await mobile.waitForFunction(([x,y])=>__bqGame.authoritativePosition?.status==='arrived'&&__bqGame.authoritativePosition.x===x&&__bqGame.authoritativePosition.y===y,destination.target,{timeout:15000});
         if (await mobile.evaluate(()=>document.documentElement.scrollWidth>innerWidth)) throw new Error('Mobile page overflow');
         if (errors.length) throw new Error(errors.join('\n'));
     } finally { await context.close(); }

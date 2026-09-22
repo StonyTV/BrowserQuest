@@ -69,3 +69,17 @@ Migration du jeu local : 3 personnages importés ; comparaison de chaque profil 
 Export/restauration QA : archive MongoDB de 3 personnages et 1 guilde restaurée dans une base temporaire ; tous les documents correspondent à la source. Base restaurée supprimée après vérification, archive conservée dans `output/mongo-qa-backup.archive.gz`. Voir [Stockage MongoDB](STORAGE.md) pour les commandes et limites.
 
 Les limites de charge, de mouvement autoritaire et de clients physiques restent ouvertes. Les tests n’établissent pas une disponibilité multi-serveur ni une reprise transparente après panne.
+
+## Déplacements V2 — 0.3.0-alpha.3
+
+`npm run test:mongo` : **26 tests réussis**. Les clients WebSocket d’intégration parcourent désormais de vrais chemins à la cadence du serveur pour rejoindre PNJ, objets et créatures. Aucun raccourci de téléportation de test n’est activé.
+
+Cinq tests ciblent les routes : collisions, diagonales, sauts de case, bords de carte et PNJ ; cadence malgré spam et tick retardé ; changement de direction avec préfixe prédit ; porte en attente de l’arrivée physique et destination contrôlée ; arrêt à la mort et remise à zéro à la résurrection. Un test WebSocket envoie les anciennes commandes de destination, un chemin discontinu et une porte distante : la position reste inchangée et aucun loot distant n’est accordé.
+
+Le parcours social à deux navigateurs, le combat et le parcours mobile tactile ont été rejoués avec ce protocole. `scripts/browser-movement.js` vérifie une marche non instantanée, un changement de direction en cours de route, la même position finale vue par un second joueur, deux corrections après messages volontairement falsifiés, puis un aller-retour réel entre la porte `(27,209)` et l’intérieur `(155,286)`. Une variante ajoutant **150 ms aux commandes sortantes de déplacement/porte** passe également. Elle vérifie que l’autre navigateur ne conserve pas un personnage fantôme à l’ancienne porte. Aucun événement `pageerror` dans ces parcours finaux.
+
+Le ramassage attend l’arrivée confirmée lorsque le client est en avance. Deux tests du module client vérifient cette attente, l’absence de doublon, l’annulation après changement de direction et le ramassage sous un personnage déjà arrivé. La variante navigateur avec délai de 150 ms ramasse un équipement réel après le retour de porte et confirme sa présence dans le sac.
+
+Captures locales : `v2-movement-observer.png`, `v2-door-interior.png`, `v2-door-return.png`, dans `output/playwright/`. Le clic explicite sur une porte sous le personnage a été corrigé après reproduction d’un retour bloqué.
+
+Limites : un aller-retour de porte représentatif testé au navigateur, pas les 84 ; délai artificiel sortant, pas une campagne de perte de paquets ni de charge ; agression et poursuite des monstres encore héritées. Le jalon ne constitue pas une validation anti-triche globale ou MMO public.

@@ -1,10 +1,10 @@
 
 define(['infomanager', 'bubble', 'renderer', 'map', 'animation', 'sprite', 'tile',
         'warrior', 'gameclient', 'audio', 'updater', 'pathfinder',
-        'item', 'mob', 'npc', 'player', 'character', 'chest', 'mobs', 'exceptions', 'config', '../../shared/js/gametypes'],
+        'item', 'mob', 'npc', 'player', 'character', 'chest', 'mobs', 'exceptions', 'config', 'movement', '../../shared/js/gametypes'],
 function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedTile,
          Warrior, GameClient, AudioManager, Updater, Pathfinder,
-         Item, Mob, Npc, Player, Character, Chest, Mobs, Exceptions, config) {
+         Item, Mob, Npc, Player, Character, Chest, Mobs, Exceptions, config, Movement) {
     
     var Game = Class.extend({
         init: function(app) {
@@ -783,7 +783,9 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                 }
                 self.showNotification(data[3]);
             };
+            this.movementSync = new Movement(this);
             this.client.onWelcome(function(id, name, x, y, hp) {
+                self.movementSync.reset();
                 log.info("Received player ID from server : "+ id);
                 self.player.id = id;
                 self.playerId = id;
@@ -821,13 +823,9 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                         x =  path[i][0],
                         y =  path[i][1];
                 
-                    if(self.player.isMovingToLoot()) {
-                        self.player.isLootMoving = false;
-                    }
-                    else if(!self.player.isAttacking()) {
-                        self.client.sendMove(x, y);
-                    }
-                
+                    self.player.isLootMoving = false;
+                    self.movementSync.send(path);
+
                     // Target cursor position
                     self.selectedX = x;
                     self.selectedY = y;
@@ -870,8 +868,6 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                         self.registerEntityDualPosition(self.player);
                     }
                 
-                    var group = Math.floor((self.player.gridX - 1) / 28) + '-' + Math.floor((self.player.gridY - 1) / 12);
-                    if (group !== self.visibleGroup) { self.visibleGroup = group; self.client.sendZone(); }
                 
                     self.player.forEachAttacker(function(attacker) {
                         if(attacker.isAdjacent(attacker.target)) {
@@ -911,7 +907,6 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                 self.player.onStopPathing(function(x, y) {
                     if(self.player.hasTarget()) {
                         self.player.lookAtTarget();
-                        self.client.sendMove(x, y);
                         self.client.sendAttack(self.player.target);
                     }
                 
@@ -920,54 +915,13 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                     if(self.isItemAt(x, y)) {
                         var item = self.getItemAt(x, y);
                     
-                        self.client.sendLoot(item); // Wait for the server before removing or consuming loot.
+                        self.movementSync.loot(item); // Collect only after the authoritative arrival.
                     }
                 
                     if(!self.player.hasTarget() && self.map.isDoor(x, y)) {
                         var dest = self.map.getDoorDestination(x, y);
                     
-                        self.player.setGridPosition(dest.x, dest.y);
-                        self.player.nextGridX = dest.x;
-                        self.player.nextGridY = dest.y;
-                        self.player.turnTo(dest.orientation);
-                        self.client.sendTeleport(dest.x, dest.y);
-                        
-                        if(self.renderer.mobile && dest.cameraX && dest.cameraY) {
-                            self.camera.setGridPosition(dest.cameraX, dest.cameraY);
-                            self.resetZone();
-                        } else {
-                            if(dest.portal) {
-                                self.assignBubbleTo(self.player);
-                            } else {
-                                self.camera.focusEntity(self.player);
-                                self.resetZone();
-                            }
-                        }
-                        
-                        if(_.size(self.player.attackers) > 0) {
-                            setTimeout(function() { self.tryUnlockingAchievement("COWARD"); }, 500);
-                        }
-                        self.player.forEachAttacker(function(attacker) {
-                            attacker.disengage();
-                            attacker.idle();
-                        });
-                    
-                        self.updatePlateauMode();
-                        
-                        self.checkUndergroundAchievement();
-                        
-                        if(self.renderer.mobile || self.renderer.tablet) {
-                            // When rendering with dirty rects, clear the whole screen when entering a door.
-                            self.renderer.clearScreen(self.renderer.context);
-                        }
-                        
-                        if(dest.portal) {
-                            self.audioManager.playSound("teleport");
-                        }
-                        
-                        if(!self.player.isDead) {
-                            self.audioManager.updateMusic();
-                        }
+                        self.movementSync.teleport(dest);
                     }
                 
                     if(self.player.target instanceof Npc) {
@@ -1074,6 +1028,7 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                     if(!self.entityIdExists(entity.id)) {
                         try {
                             if(entity.id !== self.playerId) {
+                                if (entity instanceof Player) entity.moveSpeed = self.movementSync.stepMs;
                                 entity.setSprite(self.sprites[entity.getSpriteName()]);
                                 entity.setGridPosition(x, y);
                                 entity.setOrientation(orientation);
@@ -1539,6 +1494,10 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
          * @see makeCharacterGoTo
          */
         makePlayerGoTo: function(x, y) {
+            if (!this.player.isMoving() && this.player.gridX === x && this.player.gridY === y && this.map.isDoor(x,y)) {
+                this.movementSync.teleport(this.map.getDoorDestination(x,y));
+                return;
+            }
             this.makeCharacterGoTo(this.player, x, y);
         },
     
@@ -1548,9 +1507,12 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
          */
         makePlayerGoToItem: function(item) {
             if(item) {
+                if (!this.player.isMoving() && this.player.gridX === item.gridX && this.player.gridY === item.gridY) {
+                    this.movementSync.loot(item);
+                    return;
+                }
                 this.player.isLootMoving = true;
                 this.makePlayerGoTo(item.gridX, item.gridY);
-                this.client.sendLootMove(item, item.gridX, item.gridY);
             }
         },
     

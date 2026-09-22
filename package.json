@@ -1,6 +1,6 @@
 {
   "name": "browserquest-revival",
-  "version": "0.3.0-alpha.2",
+  "version": "0.3.0-alpha.3",
   "private": true,
   "description": "A web-first RPG prototype based on Mozilla BrowserQuest",
   "scripts": {

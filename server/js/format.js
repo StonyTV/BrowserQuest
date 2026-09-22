@@ -1,6 +1,7 @@
 
 var _ = require('underscore'),
     Types = require("../../shared/js/gametypes");
+const movement = require('../../shared/content/movement.json');
 
 (function() {
     FormatChecker = Class.extend({
@@ -22,6 +23,7 @@ var _ = require('underscore'),
             this.formats[Types.Messages.INVENTORY_EQUIP] = ['s'];
             this.formats[Types.Messages.INVENTORY_DISCARD] = ['s'];
             this.formats[Types.Messages.COMMAND] = ['s', 'o'];
+            this.formats[Types.Messages.MOVE_PATH] = ['n', 'p'];
         },
         
         check: function(msg) {
@@ -31,12 +33,14 @@ var _ = require('underscore'),
                 format = this.formats[type];
             
             message.shift();
+            if (type === Types.Messages.MOVE_PATH && message[0] < 1) return false;
             
             if(format) {    
                 if(message.length !== format.length) {
                     return false;
                 }
                 for(var i = 0, n = message.length; i < n; i += 1) {
+                    if (format[i] === 'p' && (!Array.isArray(message[i]) || message[i].length < 1 || message[i].length > movement.maxPathLength || !message[i].every(point => Array.isArray(point) && point.length === 2 && point.every(Number.isSafeInteger)))) return false;
                     if (format[i] === 'o' && (!message[i] || typeof message[i] !== 'object' || Array.isArray(message[i]))) return false;
                     if(format[i] === 'n' && !Number.isSafeInteger(message[i])) {
                         return false;

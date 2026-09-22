@@ -1,4 +1,4 @@
-# BrowserQuest Revival — V2 sociale · comptes · jalon 0.3 alpha 7
+# BrowserQuest Revival — V2 sociale · comptes · métiers · jalon 0.3 alpha 8
 
 Reprise jouable de [Mozilla BrowserQuest](https://github.com/mozilla/BrowserQuest), dans un dépôt indépendant. Canvas 2D, JavaScript, Node et WebSocket. Le rendu pixel art et le monde original restent en place ; aucun React n'est nécessaire au moteur.
 
@@ -20,6 +20,8 @@ Pour conserver les personnages d’un ancien jalon SQLite : arrêter le jeu, ex�
 - Clic sur le sol : déplacement. Clic sur une créature : attaque automatique.
 - Clic sur un objet : ramassage, confirmé par le serveur.
 - **I** ou **Sac** : 24 cases fixes, sélectionner/équiper un objet, déplacer par glisser-déposer ou bouton tactile, jeter un objet non équipé.
+- **M** ou **Métiers** : progression de bûcheron, mineur et forgeron. Cliquez sur un frêne ou un gisement, puis **Récolter** ; restez immobile jusqu’à la fin.
+- **Brann**, près de la banque : atelier, trois recettes à débloquer. Une épée coûte 2 bois, 4 minerais et 3 pièces ; sa rareté et ses bonus sont tirés par le serveur.
 - **G** ou **Compagnons** : joueurs connectés, invitations, groupe de 5 et guilde ; chaque onglet garde son sujet.
 - **Ysée**, au point d’arrivée : écran de fondation centré pour 25 or, nom/sigle et aperçu du blason SVG à deux couleurs.
 - **Intendant**, à côté d’Ysée : panneau bancaire dédié, coffre de 72 objets et dépôt/retrait d’or.
@@ -28,15 +30,15 @@ Pour conserver les personnages d’un ancien jalon SQLite : arrêter le jeu, ex�
 - En groupe, l’XP se partage entre les membres vivants à 12 cases du combat. Le joueur qui achève la créature gagne les pièces et la victoire. Les rats peuvent aussi lâcher de l’équipement.
 - Les objets ont un rang, une rareté et un bonus de dégâts ou de défense.
 
-Le sac contient 24 objets, équipement porté compris. L’or sert notamment à fonder une guilde. Les objets portés doivent être remplacés avant dépôt en banque. Les consommables s'utilisent au ramassage comme dans le jeu original.
+Le sac contient 24 cases, équipement porté compris. Le bois et le fer se rangent en piles de 99, transférables entières en banque. L’or sert notamment à fonder une guilde. Les objets portés doivent être remplacés avant dépôt en banque. Les consommables s'utilisent au ramassage comme dans le jeu original.
 
-Le HUD utilise des icônes pixel art natives : sac, compagnons et cor sonore, avec les raccourcis I/G et des infobulles. Le badge des compagnons signale les invitations. La fondation de guilde a son propre écran modal, sans onglets sociaux ; le brouillon reste intact pendant les mises à jour multijoueurs.
+Le HUD utilise des icônes pixel art natives : sac, compagnons, cor sonore, compte et enclume des métiers, avec les raccourcis I/G/M et des infobulles. Le badge des compagnons signale les invitations. La fondation de guilde a son propre écran modal, sans onglets sociaux ; le brouillon reste intact pendant les mises à jour multijoueurs.
 
 ## Sauvegarde et multijoueur
 
 La connexion est obligatoire. Supabase Auth gère e-mail/mot de passe, confirmation par code et récupération du mot de passe. Le navigateur conserve un cookie HttpOnly pendant 30 jours ; les jetons de session restent chiffrés côté serveur. En développement, les messages se lisent dans **http://127.0.0.1:54326** : aucun e-mail externe n’est envoyé par défaut.
 
-Chaque compte possède jusqu’à trois personnages, avec un seul en jeu à la fois. Inventaire, expérience, banque, or, victoires et guildes restent dans MongoDB. Les anciens personnages peuvent être rattachés depuis la sélection, dans le navigateur qui détient encore leur ancienne clé. Cette récupération conserve le profil et rend l’ancienne clé inutilisable pour entrer en jeu.
+Chaque compte possède jusqu’à trois personnages, avec un seul en jeu à la fois. Inventaire, expérience, métiers, banque, or, victoires et guildes restent dans MongoDB. Les anciens personnages peuvent être rattachés depuis la sélection, dans le navigateur qui détient encore leur ancienne clé. Cette récupération conserve le profil et rend l’ancienne clé inutilisable pour entrer en jeu.
 
 Deux comptes dans deux contextes de navigateur permettent de jouer ensemble. Le menu **Compte** permet de changer de personnage ou de se déconnecter. Les positions/PV reviennent au village à la reconnexion ; les groupes restent temporaires. Les succès historiques sont encore locaux, désormais isolés par personnage ; ils ne sont pas une progression serveur partagée entre appareils.
 

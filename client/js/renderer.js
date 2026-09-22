@@ -352,6 +352,7 @@ function(Camera, Item, Character, Player) {
                     this.context.translate(dx, dy);
                 }
             
+                if (this.game.entityInfo?.[entity.id]?.harvest?.state === 'depleted') this.context.globalAlpha *= 0.4;
                 if(entity.isVisible()) {
                     if(entity.hasShadow()) {
                         this.context.drawImage(shadow.image, 0, 0, shadow.width * os, shadow.height * os,
@@ -488,12 +489,16 @@ function(Camera, Item, Character, Player) {
             if (!isPlayer && !isMob && !(info && info.services.length)) return;
             var s = this.scale, x = (entity.x + 8) * s, y = (entity.y - 13) * s;
             this.context.save();
+            if (info && info.harvest && entity.normalSprite) y = (entity.y + entity.normalSprite.offsetY - 12) * s;
             this.context.font = Math.max(11, 6 * s) + 'px GraphicPixel';
             var name = isPlayer ? entity.name : info ? info.name.split(' · ')[0] : Types.getKindAsString(entity.kind);
             var color = isPlayer ? (entity.id === this.game.playerId ? '#fcda5c' : '#ffffff') : isMob ? '#e6dfc8' : '#b4e192';
             if (isPlayer && info && info.level) name += ' · ' + info.level;
             this.drawText(name, x, y, true, color);
-            if (info && info.services.length) this.drawText(info.services.includes('bank') ? 'Banque' : 'Guildes', x, y + 7 * s, true, '#d7cc98');
+            if (info && info.services.length) {
+                var label = info.harvest ? (info.harvest.state === 'ready' ? 'Récolter' : info.harvest.state === 'harvesting' ? 'En cours…' : 'Épuisé') : info.services.includes('craft') ? 'Atelier' : info.services.includes('bank') ? 'Banque' : 'Guildes';
+                this.drawText(label, x, y + 7 * s, true, '#d7cc98');
+            }
             if (isPlayer && info && info.guildTag) this.drawText('[' + info.guildTag + ']', x, y + 7 * s, true, '#cdb1ea');
             if (isMob && info && info.maxHp > 0) {
                 this.context.fillStyle = '#161c14';

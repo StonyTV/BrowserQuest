@@ -165,6 +165,8 @@ module.exports = World = cls.Class.extend({
                 self.addNpc(spec.kind, spec.position.x, spec.position.y);
             });
             
+            self.gameplay.harvesting.spawn();
+
             // Set maximum number of entities contained in each chest area
             _.each(self.chestAreas, function(area) {
                 area.setNumberOfEntities(area.entities.length);
@@ -177,6 +179,7 @@ module.exports = World = cls.Class.extend({
             if (self.server.commands.pending || self.server.commands.error || self.server.stopping) return;
             self.movement.tick();
             self.mobAI.tick();
+            self.gameplay.harvesting.tick();
             self.processGroups();
             self.processQueues();
             
@@ -206,14 +209,15 @@ module.exports = World = cls.Class.extend({
     },
 
     sendEntityInfo: function(entity, recipient) {
-        var service = entity.type === 'npc' && SocialContent.services.find(function(spec) { return spec.kind === entity.kind && (!spec.position || (spec.position.x === entity.x && spec.position.y === entity.y)); });
+        var service = entity.type === 'npc' && this.gameplay.serviceSpec(entity);
         var guild = entity.type === 'player' && entity.session && this.gameplay.social.guild(entity);
         var message = [Types.Messages.ENTITY_INFO, entity.id, {
             name: service ? service.name : entity.name || Types.getKindAsString(entity.kind),
             hp: entity.hitPoints, maxHp: entity.maxHitPoints,
             level: entity.type === 'player' && entity.session ? Progression.status(entity.session.profile.experience).level : undefined,
             guildTag: guild ? guild.tag : '', crest: guild ? guild.crest : null,
-            services: service ? service.services : []
+            services: service ? service.services : [],
+            harvest: service?.harvest
         }];
         if (recipient) recipient.send(message);
         else this.forEachPlayer(function(player) {

@@ -1,0 +1,22 @@
+{
+  "stackLimit": 99,
+  "levels": [0, 10, 30, 60, 100, 160, 240, 340, 460, 600],
+  "professions": {
+    "lumbering": {"name": "Bûcheron", "description": "Récoltez le bois des jeunes frênes."},
+    "mining": {"name": "Mineur", "description": "Extrayez le fer des gisements."},
+    "smithing": {"name": "Forgeron", "description": "Transformez vos ressources en équipement."}
+  },
+  "resources": [
+    {"kind": 100, "id": "ash-wood", "name": "Bois de frêne", "profession": "lumbering", "nodeKind": 70, "nodeName": "Jeune frêne", "durationMs": 2400, "respawnMs": 15000, "quantity": 2, "experience": 3},
+    {"kind": 101, "id": "iron-ore", "name": "Minerai de fer", "profession": "mining", "nodeKind": 71, "nodeName": "Gisement de fer", "durationMs": 3000, "respawnMs": 18000, "quantity": 2, "experience": 3}
+  ],
+  "nodes": [
+    {"kind": 70, "x": 10, "y": 223}, {"kind": 70, "x": 8, "y": 227}, {"kind": 70, "x": 19, "y": 229},
+    {"kind": 71, "x": 28, "y": 222}, {"kind": 71, "x": 27, "y": 224}, {"kind": 71, "x": 20, "y": 227}
+  ],
+  "recipes": [
+    {"id": "steel-sword", "name": "Épée en acier", "profession": "smithing", "level": 1, "ingredients": [{"kind": 100, "quantity": 2}, {"kind": 101, "quantity": 4}], "gold": 3, "output": 61, "experience": 10},
+    {"id": "woodsman-axe", "name": "Hache de voyage", "profession": "smithing", "level": 2, "ingredients": [{"kind": 100, "quantity": 4}, {"kind": 101, "quantity": 6}], "gold": 8, "output": 65, "experience": 15},
+    {"id": "mail-armor", "name": "Cotte de mailles", "profession": "smithing", "level": 3, "ingredients": [{"kind": 100, "quantity": 2}, {"kind": 101, "quantity": 10}], "gold": 12, "output": 23, "experience": 20}
+  ]
+}

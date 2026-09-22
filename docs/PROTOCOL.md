@@ -1,6 +1,6 @@
-# Protocole 6 du prototype
+# Protocole 7 du prototype
 
-Transport : WebSocket texte JSON. `/status` indique `protocol: 6`. L’upgrade exige soit le cookie HttpOnly du navigateur de même origine, soit `Authorization: Bearer <access_token Supabase>` pour un client natif. La vérification d’identité est commune au HTTP et au WebSocket. Les SDK Unity/Steam/mobile ne sont pas encore intégrés.
+Transport : WebSocket texte JSON. `/status` indique `protocol: 7`. L’upgrade exige soit le cookie HttpOnly du navigateur de même origine, soit `Authorization: Bearer <access_token Supabase>` pour un client natif. La vérification d’identité est commune au HTTP et au WebSocket. Les SDK Unity/Steam/mobile ne sont pas encore intégrés.
 
 Après l’authentification HTTP et `GET /api/characters`, le serveur envoie `go`. Le client sélectionne un personnage possédé :
 
@@ -93,3 +93,15 @@ Le schéma de profil 3 ajoute `experience`, entier total persistant. Les anciens
 Après la sauvegarde d’une victoire, l’événement `experience` contient `{gained,levels,level}` pour chaque bénéficiaire. Aucune commande cliente ne peut accorder de l’XP ou fixer un niveau. `shared/content/progression.json` définit les seuils et bonus ; chaque espèce dans `mobs.json` déclare sa récompense d’expérience.
 
 Le pool est divisé entre l’auteur du dernier coup et les membres de son groupe vivants, connectés, à 12 cases au maximum du monstre (distance de grille Chebyshev). Le reliquat est distribué dans l’ordre, auteur du coup puis ordre des membres. Le plafond n’est pas dépassé et les parts plafonnées ne sont pas redistribuées. L’auteur du coup conserve seul l’or et le compteur de victoires. Tous les profils bénéficiaires sont enregistrés dans une transaction avant application en mémoire et envoi des confirmations. La montée augmente le maximum de PV sans soin instantané. Mort et reconnexion ne retirent aucune XP.
+
+## Récolte et fabrication — protocole 7, profil 4
+
+Le profil ajoute `professions:{lumbering:xp,mining:xp,smithing:xp}` (clés absentes = 0). Les équipements conservent leur format ; ceux fabriqués ajoutent `craftedBy` (nom de l’artisan au moment de création). Les ressources `kind:100` (bois) et `101` (fer) ont `{id,kind,quantity,rarity:"common",slot}`, sans bonus et ne sont pas équipables. Les piles occupent chacune une case, maximum 99 unités. La banque transfère la pile entière, sans fusion automatique ni découpage.
+
+Les entités `70` et `71` sont des nœuds immobiles utilisant le transport NPC existant. `ENTITY_INFO` ajoute `harvest:{state,until,actor}` : `ready`, `harvesting` ou `depleted`, échéance serveur en millisecondes Unix et nom du récolteur. `service.open` renvoie le descriptif déclaratif `resource` et ce même état ; Brann renvoie le service `craft`.
+
+- `[31,"resource.harvest",{id:entité}]` : proximité de 2 cases, immobile et hors combat. Le serveur réserve le nœud, contrôle durée et capacité, sauvegarde récompense/XP avant PROFILE et événement de fin. Mouvement, dégâts, combat, mort ou déconnexion interrompent sans récompense.
+- Événement `harvest` : `harvesting` avec échéance/durée, `cancelled` ou `complete` avec message. Les autres joueurs reçoivent l’état public du nœud, jamais le profil privé.
+- `[31,"craft.make",{recipe:"steel-sword"}]` : service atelier précédemment ouvert, PNJ à 3 cases, niveau/coûts/capacité contrôlés. Ingrédients et pièces sont débités avec création de l’objet et XP dans une seule sauvegarde du profil. Délai de 800 ms entre succès ; erreurs via `notice` avec l’action concernée. Événement `craft` après sauvegarde : `{id:uuidObjet,message}`.
+
+`shared/content/crafting.json` est la source partagée des professions, seuils, ressources, positions et recettes. Le serveur reste seul auteur des récompenses et des jets d’objet. Les niveaux de métier plafonnent à 10 ; les trois recettes de ce jalon demandent les niveaux 1–3 de forgeron. Les points de récolte et leur renouvellement sont en mémoire du monde et réinitialisés au redémarrage ; les objets et XP sont durables. L’équilibrage économique n’est pas encore validé. Rechargez les anciens clients web : ils ne connaissent pas ces nouveaux types d’entités.

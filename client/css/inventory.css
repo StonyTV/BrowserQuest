@@ -219,3 +219,18 @@ input[name=guildTag] { text-transform:uppercase; }
     .character-progression { flex-wrap:wrap; gap:3px; }
     #character-stats { gap:5px; } #character-stats dt { font-size:9px; }
 }
+
+/* Professions use the same item cells and server-owned inventory as equipment. */
+.inventory-icon.resource-icon { background-size:32px 32px; background-position:center; background-repeat:no-repeat; image-rendering:pixelated; }
+.item-quantity { position:absolute; right:3px; bottom:1px; color:#fff0bf; font:bold 12px Verdana,sans-serif; text-shadow:1px 1px #000,-1px -1px #000; pointer-events:none; }
+#crafting-panel { width:min(620px,calc(100vw - 24px)); }
+.profession-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:22px; }
+.profession-card { background:#182219; border:1px solid #526449; padding:12px; display:grid; gap:7px; }
+.profession-card strong { color:#dfca96; }.profession-card small { color:var(--rpg-muted); font-size:11px; }.profession-level { font-size:12px; }.profession-card progress { width:100%; height:7px; accent-color:#be9853; }
+.recipe-card { display:grid; gap:8px; margin:12px 0; padding:14px; border:1px solid #536246; background:#19231c; }
+.recipe-heading { display:flex; align-items:center; gap:10px; }.recipe-heading h4 { font:22px AdvoCut,Georgia,serif; flex:1; }.recipe-heading small { color:var(--rpg-gold); }.recipe-heading .inventory-icon { flex-shrink:0; }
+.recipe-costs { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:12px; }.recipe-costs .missing { color:#edae95; }.recipe-costs .enough { color:#b9d19d; }
+.recipe-card button { justify-self:end; }.crafting-hint { color:var(--rpg-gold); padding:12px; background:#3d3d25; }
+.harvest-picture { display:block; height:120px; width:auto; margin:8px auto 16px; image-rendering:pixelated; }.harvest-yield,.harvest-status { text-align:center; margin:14px 0; }#harvest-progress { width:100%; accent-color:#c3a362; height:12px; }
+#crafting-notice { color:#e7cd96; min-height:20px; margin-top:14px; }#crafting-content > .primary { display:block; margin:14px auto; min-width:180px; }
+@media(max-width:520px) { .profession-grid { grid-template-columns:1fr; gap:6px; }.profession-grid .profession-card { grid-template-columns:1fr auto; gap:3px 12px; }.profession-grid .profession-card small:first-of-type { grid-column:1 / -1; }.recipe-heading { flex-wrap:wrap; }.recipe-heading h4 { font-size:20px; }.recipe-card button { width:100%; } }

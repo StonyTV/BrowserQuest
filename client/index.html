@@ -57,6 +57,7 @@ Mozilla presents an HTML5 mini-MMORPG by Little Workshop http://www.littleworksh
             <button id="social-toggle" class="hud-action" aria-label="Compagnons · G" aria-controls="social-panel" aria-expanded="false" aria-keyshortcuts="G"><img src="img/ui/companions.png" alt="" width="32" height="32"><kbd aria-hidden="true">G</kbd><span id="social-badge" class="hud-badge" hidden></span><span class="hud-tooltip" aria-hidden="true">Compagnons</span></button>
             <button id="sound-toggle" class="hud-action" aria-label="Couper les effets sonores" aria-pressed="false"><img src="img/ui/sound.png" alt="" width="32" height="32"><span class="hud-tooltip" aria-hidden="true">Son</span></button>
             <button id="account-toggle" class="hud-action" aria-label="Compte et personnages"><img src="img/ui/account.png" alt="" width="32" height="32"><span class="hud-tooltip" aria-hidden="true">Compte</span></button>
+            <button id="crafting-toggle" class="hud-action" aria-label="Métiers · M" aria-keyshortcuts="M"><img src="img/crafting/crafting.png" alt="" width="32" height="32"><kbd aria-hidden="true">M</kbd><span class="hud-tooltip" aria-hidden="true">Métiers</span></button>
             <span id="gold-display" class="hud-purse" aria-label="0 pièces d’or"><img src="img/ui/coins.png" alt="" width="32" height="32"><span id="gold-count">0</span></span>
         </nav>
         <aside id="vitals"><div class="vitals-heading"><strong id="vitals-label"></strong><span id="vitals-health-label"></span></div><progress id="vitals-health" aria-label="Votre vie" max="80" value="80"></progress><div class="vitals-experience-heading"><span>Expérience</span><span id="vitals-experience-label"></span></div><progress id="vitals-experience" class="experience-bar" aria-label="Progression du niveau" max="40" value="0"></progress></aside><div id="experience-gain" role="status" hidden></div>
@@ -73,6 +74,10 @@ Mozilla presents an HTML5 mini-MMORPG by Little Workshop http://www.littleworksh
             <header><div><small>LE MONDE VIVANT</small><h2>Compagnons</h2></div><button id="social-close" class="icon-close" aria-label="Fermer les compagnons"><img src="img/ui/close.png" alt="" width="32" height="32"></button></header>
             <nav id="social-tabs" aria-label="Espace social"></nav>
             <div id="social-content"></div>
+        </section>
+        <section id="crafting-panel" class="rpg-panel" aria-label="Métiers et atelier" hidden>
+            <header><div><small>LE TRAVAIL DES MAINS</small><h2 id="crafting-title">Métiers &amp; savoir-faire</h2></div><button id="crafting-close" class="icon-close" aria-label="Fermer les métiers"><img src="img/ui/close.png" alt="" width="32" height="32"></button></header>
+            <div id="crafting-content"></div><p id="crafting-notice" role="status"></p>
         </section>
         <section id="bank-panel" class="rpg-panel" aria-label="Banque" hidden>
             <header><div><small>L’INTENDANT</small><h2>Banque du village</h2></div><button id="bank-close" class="icon-close" aria-label="Fermer la banque"><img src="img/ui/close.png" alt="" width="32" height="32"></button></header>

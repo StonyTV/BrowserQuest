@@ -12,14 +12,14 @@ function createProfile(name) {
     const armor = createItem(Types.Entities.CLOTHARMOR, 0);
     weapon.slot = 0;
     armor.slot = 1;
-    return { id: randomUUID(), schemaVersion: 3, experience: 0, name, guildId: null, bank: { items: [], gold: 0 }, gold: 0, kills: 0, items: [weapon, armor], equipped: { weapon: weapon.id, armor: armor.id } };
+    return { id: randomUUID(), schemaVersion: 4, experience: 0, professions: {}, name, guildId: null, bank: { items: [], gold: 0 }, gold: 0, kills: 0, items: [weapon, armor], equipped: { weapon: weapon.id, armor: armor.id } };
 }
 function equipment(profile, slot) {
     return profile.items.find(item => item.id === profile.equipped[slot]);
 }
 function equip(profile, id) {
     const item = profile.items.find(item => item.id === id);
-    if (!item) return false;
+    if (!item || (!Types.isWeapon(item.kind) && !Types.isArmor(item.kind))) return false;
     profile.equipped[Types.isWeapon(item.kind) ? 'weapon' : 'armor'] = id;
     return true;
 }
@@ -32,7 +32,8 @@ function discard(profile, id) {
 }
 function normalizeProfile(profile) {
     profile.id ||= randomUUID();
-    profile.schemaVersion = 3;
+    profile.schemaVersion = 4;
+    profile.professions ||= {};
     profile.experience ??= 0;
     profile.bank ||= { items: [], gold: 0 };
     profile.guildId ||= null;

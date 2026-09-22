@@ -68,6 +68,9 @@ async function connect(name, token = '') {
     }
     return peer;
 }
+async function closePeer(peer) {
+    const closed = once(peer.socket, 'close'); peer.socket.close(); await closed;
+}
 async function waitFor(peer, predicate, attempts = 100) {
     for (let i = 0; i < attempts; i++) {
         const index = peer.messages.findIndex(predicate);
@@ -83,6 +86,7 @@ const blocked = new Set(map.collisions);
 // The original server spawns static entities at tileIndexToGridPosition(index).x + 1.
 for (const [index,kind] of Object.entries(map.staticEntities)) if (Types.isNpc(Types.getKindFromString(kind))) blocked.add(Number(index));
 for (const npc of require('../shared/content/social.json').services) if (npc.position) blocked.add(npc.position.y*map.width+npc.position.x);
+for (const node of require('../shared/content/crafting.json').nodes) blocked.add(node.y*map.width+node.x);
 function route(from, to, radius = 0) {
     const queue = [[...from]], previous = new Map([[from.join(','),null]]);
     for(let index=0;index<queue.length && index<10000;index++) {
@@ -109,7 +113,7 @@ async function moveTo(peer,x,y,radius=0) {
     assert.deepEqual(peer.position,path.at(-1));
 }
 test('HTTP serves game and shared protocol, never server files', async () => {
-    assert.equal((await (await fetch(base + '/status')).json()).protocol, 6);
+    assert.equal((await (await fetch(base + '/status')).json()).protocol, 7);
     assert.equal((await fetch(base)).status, 200);
     assert.equal((await fetch(base + '/shared/js/gametypes.js')).status, 200);
     assert.equal((await fetch(base + '/server/config.json')).status, 404);
@@ -416,6 +420,39 @@ test('server restart restores the character, bank and guild for the same browser
     assert.equal(ally.profile.progression.level, progressionProof.level);
     assert.equal(ally.profile.maxHitPoints, progressionProof.maxHitPoints);
     assert.equal(ally.profile.stats.attackBonus, 1);
+});
+
+test('shared harvesting, crafted equipment and profession progress survive reconnect without duplicate rewards', async () => {
+    const store = await openStore(), saved = await store.open('', 'Artisan'); saved.profile.gold = 10; await store.save(saved); await store.close();
+    const hero = await connect('Artisan', saved.token), rival = await connect('Concurrent');
+    const event = (peer, type, predicate = () => true) => waitFor(peer, message => message[0] === 32 && message[1] === type && predicate(message[2]), 200).then(message => message[2]);
+    const command = (peer, action, payload) => peer.send([31, action, payload]);
+    const content = require('../shared/content/crafting.json');
+    const wood = content.nodes.find(node => node.kind === 70), iron = content.nodes.filter(node => node.kind === 71);
+    const id = node => Number('8' + node.x + node.y);
+    await moveTo(hero,wood.x,wood.y,1); await moveTo(rival,wood.x,wood.y,1);
+    command(hero,'resource.harvest',{id:id(wood)}); await event(hero,'harvest',data=>data.state==='harvesting');
+    command(rival,'resource.harvest',{id:id(wood)}); assert.match((await event(rival,'notice')).message,/autre aventurier/);
+    await event(hero,'harvest',data=>data.state==='complete');
+    let profile = (await waitFor(hero,m=>m[0]===27))[1]; assert.equal(profile.items.find(i=>i.kind===100).quantity,2); assert.equal(profile.professions.lumbering,3);
+    command(hero,'resource.harvest',{id:id(wood)}); assert.match((await event(hero,'notice')).message,/renouveler/);
+    assert.equal(rival.messages.some(m=>m[0]===27 && m[1].items.some(i=>i.kind===100)),false);
+    for(const node of iron.slice(0,2)) {
+        await moveTo(hero,node.x,node.y,1); command(hero,'resource.harvest',{id:id(node)});
+        await event(hero,'harvest',data=>data.state==='complete'); profile=(await waitFor(hero,m=>m[0]===27))[1];
+    }
+    assert.equal(profile.items.find(i=>i.kind===101).quantity,4);
+    command(hero,'craft.make',{recipe:'steel-sword'}); assert.match((await event(hero,'notice')).message,/PNJ/);
+    const workshop=require('../shared/content/social.json').services.find(s=>s.services.includes('craft'));
+    await moveTo(hero,workshop.position.x,workshop.position.y,1);
+    command(hero,'service.open',{id:id(workshop.position)}); await event(hero,'service');
+    command(hero,'craft.make',{recipe:'steel-sword'}); command(hero,'craft.make',{recipe:'steel-sword'});
+    const crafted=await event(hero,'craft'); await event(hero,'notice',data=>data.error);
+    profile=(await waitFor(hero,m=>m[0]===27))[1]; assert.equal(profile.gold,7);assert.equal(profile.items.some(i=>i.kind===100||i.kind===101),false);
+    assert.equal(profile.items.filter(i=>i.id===crafted.id).length,1); assert.equal(profile.professions.smithing,10);
+    hero.send([28,crafted.id]); profile=(await waitFor(hero,m=>m[0]===27))[1]; assert.equal(profile.equipped.weapon,crafted.id);
+    await closePeer(hero); await closePeer(rival);
+    const again=await connect('Artisan',saved.token); assert.equal(again.profile.equipped.weapon,crafted.id);assert.equal(again.profile.professions.smithing,10);assert.equal(again.profile.gold,7);await closePeer(again);
 });
 
 test('a real storage conflict stops the server without acknowledging or overwriting the command', {skip:!mongo}, async () => {

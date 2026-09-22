@@ -165,7 +165,7 @@ define(['character'], function(Character) {
         init: function(id, kind) {
             this._super(id, kind, 1);
             this.itemKind = Types.getKindAsString(this.kind);
-            this.talkCount = NpcTalk[this.itemKind].length;
+            this.talkCount = (NpcTalk[this.itemKind] || []).length;
             this.talkIndex = 0;
         },
     

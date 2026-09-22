@@ -1,4 +1,4 @@
-define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creation', 'ui/character'], function(dom, items, SocialUI, ChatUI, BankUI, GuildCreation, renderCharacter) {
+define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creation', 'ui/character', 'ui/crafting'], function(dom, items, SocialUI, ChatUI, BankUI, GuildCreation, renderCharacter, CraftingUI) {
     return function(game) {
         var panel = document.getElementById('inventory-panel');
         var toggle = document.getElementById('inventory-toggle');
@@ -10,6 +10,9 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
         var chat = ChatUI(game, command);
         var bank = BankUI(command);
         var creation = GuildCreation(command);
+        var crafting = CraftingUI(game, command);
+        document.getElementById('crafting-toggle').onclick = function() { crafting.show(); open('crafting'); };
+        document.getElementById('crafting-close').onclick = function() { open(null); };
         document.getElementById('sound-toggle').onclick = function() {
             game.audioManager.toggle();
             this.querySelector('.hud-tooltip').textContent = game.audioManager.enabled ? 'Son' : 'Son coupé';
@@ -18,7 +21,7 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
         };
         function open(name) {
             if (document.querySelector('dialog[open]')) return;
-            ['inventory', 'social', 'bank'].forEach(function(id) {
+            ['inventory', 'social', 'bank', 'crafting'].forEach(function(id) {
                 document.getElementById(id + '-panel').hidden = id !== name;
                 var button = document.getElementById(id + '-toggle');
                 if (button) button.setAttribute('aria-expanded', String(id === name));
@@ -34,6 +37,7 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
             if (event.key === 'Escape') { open(null); return; }
             if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || !game.started) return;
             if (event.key.toLowerCase() === 'i') { toggle.click(); event.preventDefault(); }
+            if (event.key.toLowerCase() === 'm') { document.getElementById('crafting-toggle').click(); event.preventDefault(); }
             if (event.key.toLowerCase() === 'g') { document.getElementById('social-toggle').click(); event.preventDefault(); }
         });
         function move(id, slot) { moving = false; command('inventory.move', { id: id, slot: slot }); }
@@ -55,11 +59,13 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
                 var equipped = Object.values(profile.equipped).includes(item.id);
                 details.className = 'item-details ' + item.rarity;
                 details.append(items.icon(item), dom.node('h3', items.name(item)), dom.node('p', items.stats(item)));
+                if (item.craftedBy) details.append(dom.node('p', 'Fabriqué par ' + item.craftedBy, 'muted'));
                 var equip = dom.button(equipped ? 'Équipé' : 'Équiper', function() { game.client.sendMessage([Types.Messages.INVENTORY_EQUIP, item.id]); }, 'primary');
                 equip.disabled = equipped;
-                details.append(equip, dom.button(moving ? 'Annuler' : 'Déplacer', function() { moving = !moving; render(); }));
+                if (!items.resource(item)) details.append(equip);
+                details.append(dom.button(moving ? 'Annuler' : 'Déplacer', function() { moving = !moving; render(); }));
                 if (!equipped) details.append(dom.button('Jeter', function() {
-                    if (window.confirm('Jeter définitivement ' + items.name(item) + ' ?')) game.client.sendMessage([Types.Messages.INVENTORY_DISCARD, item.id]);
+                    if (window.confirm('Jeter définitivement ' + (item.quantity ? item.quantity + ' × ' : '') + items.name(item) + ' ?')) game.client.sendMessage([Types.Messages.INVENTORY_DISCARD, item.id]);
                 }, 'danger'));
                 details.append(dom.node('p', moving ? 'Choisissez une case de destination.' : 'Glissez cet objet vers une autre case.', 'muted'));
             } else {
@@ -77,6 +83,7 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
             });
             social.profile(profile);
             bank.profile(profile);
+            crafting.profile(profile);
             creation.profile(profile);
         }
         game.onProfile = function(next) {
@@ -107,13 +114,15 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
                 clearTimeout(experienceTimer); experienceTimer = setTimeout(function() { toast.hidden = true; }, data.levels ? 5000 : 2500);
                 if (data.levels) chat.notice('Vous atteignez le niveau ' + data.level + '. Votre vitalité et votre puissance augmentent.');
             }
-            else if (type === 'notice') { chat.notice(data.message); creation.notice(data); }
+            else if (type === 'notice') { chat.notice(data.message); creation.notice(data); crafting.notice(data); }
+            else if (type === 'harvest' || type === 'craft') { crafting.event(type, data); if (data.message) chat.notice(data.message); }
             else if (type === 'social') {
                 social.state(data); chat.social(data);
                 if (data.guild && creation.isOpen()) { creation.complete(); social.show('guild'); open('social'); }
             }
             else if (type === 'service') {
-                if (data.services.includes('bank')) open('bank');
+                if (data.services.includes('craft') || data.services.includes('harvest')) { crafting.service(data); open('crafting'); }
+                else if (data.services.includes('bank')) open('bank');
                 else if (data.services.includes('guild')) {
                     if (profile.guildId) { social.show('guild'); open('social'); }
                     else { open(null); creation.open(profile); }

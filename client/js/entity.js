@@ -136,14 +136,9 @@ define(function() {
         },
     
         setHighlight: function(value) {
-            if(value === true) {
-                this.sprite = this.sprite.silhouetteSprite;
-                this.isHighlighted = true;
-            }
-            else {
-                this.sprite = this.normalSprite;
-                this.isHighlighted = false;
-            }
+            // Touch-first sessions may not have generated desktop hover silhouettes.
+            this.sprite = value && this.normalSprite.silhouetteSprite ? this.normalSprite.silhouetteSprite : this.normalSprite;
+            this.isHighlighted = this.sprite !== this.normalSprite;
         },
     
         setVisible: function(value) {

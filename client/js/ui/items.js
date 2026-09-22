@@ -1,4 +1,6 @@
-define(['ui/dom'], function(dom) {
+define(['ui/dom', 'text!../../../shared/content/crafting.json'], function(dom, raw) {
+    var crafting = JSON.parse(raw);
+    function resource(item) { return crafting.resources.find(function(spec) { return spec.kind === item.kind; }); }
     var names = {
         sword1: 'Épée usée', sword2: 'Épée en acier', axe: 'Hache', morningstar: 'Masse d’armes',
         bluesword: 'Épée magique', redsword: 'Épée ardente', goldensword: 'Épée dorée',
@@ -6,15 +8,19 @@ define(['ui/dom'], function(dom) {
         platearmor: 'Armure de plaques', redarmor: 'Armure rouge', goldenarmor: 'Armure dorée'
     };
     var rarities = { common: 'Commun', uncommon: 'Inhabituel', rare: 'Rare' };
-    function name(item) { return names[Types.getKindAsString(item.kind)] || 'Objet'; }
+    function name(item) { return resource(item)?.name || names[Types.getKindAsString(item.kind)] || 'Objet'; }
     function stats(item) {
+        var material = resource(item);
+        if (material) return 'Ressource · ' + item.quantity + ' / ' + crafting.stackLimit + ' · ' + crafting.professions[material.profession].name;
         var weapon = Types.isWeapon(item.kind);
         var rank = (weapon ? Types.getWeaponRank(item.kind) : Types.getArmorRank(item.kind)) + 1;
         return rarities[item.rarity] + ' · Rang ' + rank + ' · +' + item.bonus + (weapon ? ' dégâts' : ' défense');
     }
     function icon(item) {
         var element = dom.node('span', '', 'inventory-icon');
-        element.style.backgroundImage = 'url("img/2/item-' + Types.getKindAsString(item.kind) + '.png")';
+        var material = resource(item);
+        if (material) { element.classList.add('resource-icon'); element.style.backgroundImage = 'url("img/crafting/' + material.id + '.png")'; }
+        else element.style.backgroundImage = 'url("img/2/item-' + Types.getKindAsString(item.kind) + '.png")';
         return element;
     }
     function grid(items, capacity, options) {
@@ -32,6 +38,7 @@ define(['ui/dom'], function(dom) {
                     cell.dataset.itemId = item.id;
                     cell.classList.add(item.rarity);
                     cell.append(icon(item));
+                    if (item.quantity) cell.append(dom.node('span', item.quantity, 'item-quantity'));
                     if (options.equipped && Object.values(options.equipped).includes(item.id)) cell.append(dom.node('span', '◆', 'equipped-mark'));
                     if (options.selected === item.id) cell.classList.add('selected');
                     if (options.move) {
@@ -48,5 +55,5 @@ define(['ui/dom'], function(dom) {
         }
         return element;
     }
-    return { name: name, stats: stats, icon: icon, grid: grid };
+    return { name: name, stats: stats, icon: icon, grid: grid, resource: resource };
 });

@@ -1,5 +1,5 @@
 
-define(['mobs', 'items', 'npcs', 'warrior', 'chest'], function(Mobs, Items, NPCs, Warrior, Chest) {
+define(['mobs', 'items', 'npcs', 'warrior', 'chest', 'npc'], function(Mobs, Items, NPCs, Warrior, Chest, Npc) {
 
     var EntityFactory = {};
 
@@ -19,6 +19,9 @@ define(['mobs', 'items', 'npcs', 'warrior', 'chest'], function(Mobs, Items, NPCs
     //===== mobs ======
 
     EntityFactory.builders = [];
+    [Types.Entities.ASHNODE, Types.Entities.IRONNODE].forEach(function(kind) {
+        EntityFactory.builders[kind] = function(id) { return new Npc(id, kind); };
+    });
 
     EntityFactory.builders[Types.Entities.WARRIOR] = function(id, name) {
         return new Warrior(id, name);

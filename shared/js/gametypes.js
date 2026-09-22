@@ -93,6 +93,11 @@ Types = {
         LAVANPC: 54,
         CODER: 55,
         
+        ASHNODE: 70,
+        IRONNODE: 71,
+        ASHWOOD: 100,
+        IRONORE: 101,
+
         // Weapons
         SWORD1: 60,
         SWORD2: 61,
@@ -112,6 +117,10 @@ Types = {
 };
 
 var kinds = {
+    ashnode: [Types.Entities.ASHNODE, 'npc'],
+    ironnode: [Types.Entities.IRONNODE, 'npc'],
+    ashwood: [Types.Entities.ASHWOOD, 'resource'],
+    ironore: [Types.Entities.IRONORE, 'resource'],
     warrior: [Types.Entities.WARRIOR, "player"],
     
     rat: [Types.Entities.RAT, "mob"],

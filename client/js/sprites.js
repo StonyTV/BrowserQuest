@@ -1,5 +1,5 @@
 
-define(['text!../sprites/agent.json',
+define(['text!../sprites/ashnode.json', 'text!../sprites/ironnode.json', 'text!../sprites/agent.json',
         'text!../sprites/arrow.json',
         'text!../sprites/axe.json',
         'text!../sprites/bat.json',

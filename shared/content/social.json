@@ -54,6 +54,17 @@
         "x": 18,
         "y": 222
       }
+    },
+    {
+      "kind": 44,
+      "name": "Brann · Atelier du village",
+      "services": [
+        "craft"
+      ],
+      "position": {
+        "x": 17,
+        "y": 224
+      }
     }
   ],
   "crest": {

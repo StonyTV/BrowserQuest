@@ -31,7 +31,7 @@ test('legacy profiles start at zero experience without changing possessions or v
     profile.kills=12;profile.gold=47;
     const before=structuredClone(profile);
     normalizeProfile(profile);
-    assert.equal(profile.experience,0);assert.equal(profile.schemaVersion,3);
+    assert.equal(profile.experience,0);assert.equal(profile.schemaVersion,4);
     for(const key of ['id','gold','kills','items','equipped','bank']) assert.deepEqual(profile[key],before[key]);
 });
 

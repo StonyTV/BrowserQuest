@@ -1,9 +1,9 @@
 
 define(['infomanager', 'bubble', 'renderer', 'map', 'animation', 'sprite', 'tile',
-        'warrior', 'gameclient', 'audio', 'updater', 'transition', 'pathfinder',
+        'warrior', 'gameclient', 'audio', 'updater', 'pathfinder',
         'item', 'mob', 'npc', 'player', 'character', 'chest', 'mobs', 'exceptions', 'config', '../../shared/js/gametypes'],
 function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedTile,
-         Warrior, GameClient, AudioManager, Updater, Transition, Pathfinder,
+         Warrior, GameClient, AudioManager, Updater, Pathfinder,
          Item, Mob, Npc, Player, Character, Chest, Mobs, Exceptions, config) {
     
     var Game = Class.extend({
@@ -33,7 +33,6 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
             this.itemGrid = null;
             this.currentCursor = null;
             this.mouse = { x: 0, y: 0 };
-            this.zoningQueue = [];
             this.previousClickPosition = {};
     
             this.selectedX = 0;
@@ -49,8 +48,6 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
             // combat
             this.infoManager = new InfoManager(this);
         
-            // zoning
-            this.currentZoning = null;
         
             this.cursors = {};
 
@@ -765,6 +762,15 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                 }
             });
         
+            this.entityInfo = {};
+            this.client.handlers[Types.Messages.EVENT] = function(data) {
+                if (self.onEvent) self.onEvent(data[1], data[2]);
+            };
+            this.client.handlers[Types.Messages.ENTITY_INFO] = function(data) {
+                self.entityInfo[data[1]] = data[2];
+                var bar = document.querySelector('.party-member[data-entity-id="' + data[1] + '"] progress');
+                if (bar) { bar.max = data[2].maxHp; bar.value = data[2].hp; }
+            };
             this.client.handlers[Types.Messages.PROFILE] = function(data) {
                 if (self.onProfile) self.onProfile(data[1]);
             };
@@ -864,9 +870,8 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                         self.registerEntityDualPosition(self.player);
                     }
                 
-                    if(self.isZoningTile(self.player.gridX, self.player.gridY)) {
-                        self.enqueueZoningFrom(self.player.gridX, self.player.gridY);
-                    }
+                    var group = Math.floor((self.player.gridX - 1) / 28) + '-' + Math.floor((self.player.gridY - 1) / 12);
+                    if (group !== self.visibleGroup) { self.visibleGroup = group; self.client.sendZone(); }
                 
                     self.player.forEachAttacker(function(attacker) {
                         if(attacker.isAdjacent(attacker.target)) {
@@ -1494,19 +1499,13 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
          * @returns {Object} An object containing x and y properties.
          */
         getMouseGridPosition: function() {
-            var mx = this.mouse.x,
-                my = this.mouse.y,
-                c = this.renderer.camera,
-                s = this.renderer.scale,
-                ts = this.renderer.tilesize,
-                offsetX = mx % (ts * s),
-                offsetY = my % (ts * s),
-                x = ((mx - offsetX) / (ts * s)) + c.gridX,
-                y = ((my - offsetY) / (ts * s)) + c.gridY;
-        
-                return { x: x, y: y };
+            var camera = this.renderer.camera, scale = this.renderer.scale;
+            return {
+                x: Math.floor((this.mouse.x / scale + camera.x) / 16),
+                y: Math.floor((this.mouse.y / scale + camera.y) / 16)
+            };
         },
-    
+
         /**
          * Moves a character to a given location on the world grid.
          *
@@ -1587,6 +1586,12 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
             var msg;
         
             if(npc) {
+                var info = this.entityInfo && this.entityInfo[npc.id];
+                if (info && info.services && info.services.length) {
+                    this.previousClickPosition = {};
+                    this.client.sendMessage([Types.Messages.COMMAND, 'service.open', {id: npc.id}]);
+                    return;
+                }
                 msg = npc.talk();
                 this.previousClickPosition = {};
                 if(msg) {
@@ -1890,8 +1895,6 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
 	        
     	    if(this.started
     	    && this.player
-    	    && !this.isZoning()
-    	    && !this.isZoningTile(this.player.nextGridX, this.player.nextGridY)
     	    && !this.player.isDead
     	    && !this.hoveringCollidingTile
     	    && !this.hoveringPlateauTile) {
@@ -2050,104 +2053,6 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
             }
         },
     
-        /**
-         * 
-         */
-        isZoningTile: function(x, y) {
-            var c = this.camera;
-        
-            x = x - c.gridX;
-            y = y - c.gridY;
-            
-            if(x === 0 || y === 0 || x === c.gridW-1 || y === c.gridH-1) {
-                return true;
-            }
-            return false;
-        },
-    
-        /**
-         * 
-         */
-        getZoningOrientation: function(x, y) {
-            var orientation = "",
-                c = this.camera;
-
-            x = x - c.gridX;
-            y = y - c.gridY;
-       
-            if(x === 0) {
-                orientation = Types.Orientations.LEFT;
-            }
-            else if(y === 0) {
-                orientation = Types.Orientations.UP;
-            }
-            else if(x === c.gridW-1) {
-                orientation = Types.Orientations.RIGHT;
-            }
-            else if(y === c.gridH-1) {
-                orientation = Types.Orientations.DOWN;
-            }
-        
-            return orientation;
-        },
-    
-        startZoningFrom: function(x, y) {
-            this.zoningOrientation = this.getZoningOrientation(x, y);
-        
-            if(this.renderer.mobile || this.renderer.tablet) {
-                var z = this.zoningOrientation,
-                    c = this.camera,
-                    ts = this.renderer.tilesize,
-                    x = c.x,
-                    y = c.y,
-                    xoffset = (c.gridW - 2) * ts,
-                    yoffset = (c.gridH - 2) * ts;
-            
-                if(z === Types.Orientations.LEFT || z === Types.Orientations.RIGHT) {
-                    x = (z === Types.Orientations.LEFT) ? c.x - xoffset : c.x + xoffset;
-                } else if(z === Types.Orientations.UP || z === Types.Orientations.DOWN) {
-                    y = (z === Types.Orientations.UP) ? c.y - yoffset : c.y + yoffset;
-                }
-                c.setPosition(x, y);
-            
-                this.renderer.clearScreen(this.renderer.context);
-                this.endZoning();
-                
-                // Force immediate drawing of all visible entities in the new zone
-                this.forEachVisibleEntityByDepth(function(entity) {
-                    entity.setDirty();
-                });
-            }
-            else {
-                this.currentZoning = new Transition();
-            }
-            this.bubbleManager.clean();
-            this.client.sendZone();
-        },
-        
-        enqueueZoningFrom: function(x, y) {
-            this.zoningQueue.push({x: x, y: y});
-            
-            if(this.zoningQueue.length === 1) {
-                this.startZoningFrom(x, y);
-            }
-        },
-    
-        endZoning: function() {
-            this.currentZoning = null;
-            this.resetZone();
-            this.zoningQueue.shift();
-            
-            if(this.zoningQueue.length > 0) {
-                var pos = this.zoningQueue[0];
-                this.startZoningFrom(pos.x, pos.y);
-            }
-        },
-    
-        isZoning: function() {
-            return !_.isNull(this.currentZoning);
-        },
-    
         resetZone: function() {
             this.bubbleManager.clean();
             this.initAnimatedTiles();
@@ -2265,19 +2170,20 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
         },
     
         resize: function() {
-            var x = this.camera.x,
-                y = this.camera.y,
-                currentScale = this.renderer.scale,
-                newScale = this.renderer.getScaleFactor();
-    
-                this.renderer.rescale(newScale);
-                this.camera = this.renderer.camera;
-                this.camera.setPosition(x, y);
-
-                this.renderer.renderStaticCanvases();
+            this.renderer.rescale();
+            this.camera = this.renderer.camera;
+            this.camera.lookAt(this.player);
+            this.initAnimatedTiles();
+            this.renderer.renderStaticCanvases();
         },
-    
+
         updateBars: function() {
+            if (this.player) {
+                var bar = document.getElementById('vitals-health');
+                if (bar) { bar.max = this.player.maxHitPoints; bar.value = this.player.hitPoints; }
+                var label = document.getElementById('vitals-label');
+                if (label) label.textContent = this.player.name + ' · ' + this.player.hitPoints + ' / ' + this.player.maxHitPoints;
+            }
             if(this.player && this.playerhp_callback) {
                 this.playerhp_callback(this.player.hitPoints, this.player.maxHitPoints);
             }

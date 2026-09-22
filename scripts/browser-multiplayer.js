@@ -12,8 +12,8 @@ async (page) => {
         await friend.evaluate(([x, y]) => __bqGame.makePlayerGoTo(x, y + 1), position);
         await friend.waitForFunction(([x,y]) => Math.abs(__bqGame.player.gridX-x) + Math.abs(__bqGame.player.gridY-y) <= 2, position, {timeout: 25000});
         await friend.keyboard.press('Enter');
-        await friend.locator('#chatinput').fill('Bonjour aventurier !');
-        await friend.locator('#chatinput').press('Enter');
+        await friend.locator('#rpg-chat-input').fill('Bonjour aventurier !');
+        await friend.locator('#rpg-chat-input').press('Enter');
         await page.waitForFunction(() => document.getElementById('bubbles').textContent.includes('Bonjour aventurier !'));
         if (await page.locator('#inventory-panel').isVisible()) await page.getByRole('button', {name:'Fermer le sac'}).click();
         await page.screenshot({path:'output/playwright/multiplayer-chat.png',scale:'css'});

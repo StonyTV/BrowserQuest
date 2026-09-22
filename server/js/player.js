@@ -76,6 +76,7 @@ module.exports = Player = Character.extend({
                 self.hasEnteredGame = true;
                 self.isDead = false;
                 self.syncProfile();
+                self.server.gameplay.social.connect(self);
             }
             else if(action === Types.Messages.INVENTORY_EQUIP || action === Types.Messages.INVENTORY_DISCARD) {
                 var changed = action === Types.Messages.INVENTORY_EQUIP
@@ -87,6 +88,9 @@ module.exports = Player = Character.extend({
                     self.syncProfile();
                 }
             }
+            else if(action === Types.Messages.COMMAND) {
+                self.server.gameplay.handle(self, message[1], message[2]);
+            }
             else if(action === Types.Messages.WHO) {
                 message.shift();
                 self.server.pushSpawnsToPlayer(self, message);
@@ -95,13 +99,7 @@ module.exports = Player = Character.extend({
                 self.zone_callback();
             }
             else if(action === Types.Messages.CHAT) {
-                var msg = Utils.sanitize(message[1]);
-                
-                // Sanitized messages may become empty. No need to broadcast empty chat messages.
-                if(msg && msg !== "") {
-                    msg = msg.substr(0, 60); // Enforce maxlength of chat input
-                    self.broadcastToZone(new Messages.Chat(self, msg), false);
-                }
+                self.server.gameplay.handle(self, 'chat.send', {channel: 'zone', body: message[1]});
             }
             else if(action === Types.Messages.MOVE) {
                 if(self.move_callback) {
@@ -201,6 +199,7 @@ module.exports = Player = Character.extend({
                             if(!self.hasFullHealth()) {
                                 self.regenHealthBy(amount);
                                 self.server.pushToPlayer(self, self.health());
+                                self.server.sendEntityInfo(self);
                             }
                         } else if(Types.isArmor(kind) || Types.isWeapon(kind)) {
                             self.session.profile.items.push(RPG.createItem(kind));
@@ -273,9 +272,10 @@ module.exports = Player = Character.extend({
         this.hitPoints = Math.min(this.hitPoints || this.maxHitPoints, this.maxHitPoints);
     },
 
-    syncProfile: function() {
-        this.server.profiles.save(this.session);
+    syncProfile: function(saved) {
+        if (!saved) this.server.profiles.save(this.session);
         this.send([Types.Messages.PROFILE, { token: this.session.token, capacity: RPG.CAPACITY, maxHitPoints: this.maxHitPoints, hitPoints: this.hitPoints, ...this.session.profile }]);
+        this.server.sendEntityInfo(this);
     },
 
     destroy: function() {

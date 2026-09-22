@@ -16,6 +16,8 @@ var cls = require("./lib/class"),
     Utils = require("./utils"),
     Formulas = require("./formulas"),
     RPG = require("./profiles"),
+    Gameplay = require("./domain/gameplay"),
+    SocialContent = require("../../shared/content/social.json"),
     Types = require("../../shared/js/gametypes");
 
 // ======= GAME SERVER ========
@@ -49,13 +51,14 @@ module.exports = World = cls.Class.extend({
         this.playerCount = 0;
         
         this.zoneGroupsReady = false;
+        this.gameplay = new Gameplay(this);
         
         this.onPlayerConnect(function(player) {
             player.onRequestPosition(function() {
                 if(player.lastCheckpoint) {
                     return player.lastCheckpoint.getRandomPosition();
                 } else {
-                    return self.map.getRandomStartingPosition();
+                    return self.map.getCheckpoint(SocialContent.startingCheckpoint).getRandomPosition();
                 }
             });
         });
@@ -112,6 +115,7 @@ module.exports = World = cls.Class.extend({
             player.onExit(function() {
                 log.info(player.name + " has left the game.");
                 self.removePlayer(player);
+                self.gameplay.social.disconnect(player);
                 self.decrementPlayerCount();
                 self.updatePopulation();
                 
@@ -138,6 +142,7 @@ module.exports = World = cls.Class.extend({
             self.forEachCharacter(function(character) {
                 if(!character.hasFullHealth()) {
                     character.regenHealthBy(Math.floor(character.maxHitPoints / 25));
+                    self.sendEntityInfo(character);
             
                     if(character.type === 'player') {
                         self.pushToPlayer(character, character.regen());
@@ -181,6 +186,9 @@ module.exports = World = cls.Class.extend({
             
             // Spawn static entities
             self.spawnStaticEntities();
+            SocialContent.services.filter(function(spec) { return spec.position; }).forEach(function(spec) {
+                self.addNpc(spec.kind, spec.position.x, spec.position.y);
+            });
             
             // Set maximum number of entities contained in each chest area
             _.each(self.chestAreas, function(area) {
@@ -222,6 +230,24 @@ module.exports = World = cls.Class.extend({
             }
             self.handleHurtEntity(player);
         });
+    },
+
+    sendEntityInfo: function(entity, recipient) {
+        var service = entity.type === 'npc' && SocialContent.services.find(function(spec) { return spec.kind === entity.kind && (!spec.position || (spec.position.x === entity.x && spec.position.y === entity.y)); });
+        var guild = entity.type === 'player' && entity.session && this.gameplay.social.guild(entity);
+        var message = [Types.Messages.ENTITY_INFO, entity.id, {
+            name: service ? service.name : entity.name || Types.getKindAsString(entity.kind),
+            hp: entity.hitPoints, maxHp: entity.maxHitPoints,
+            guildTag: guild ? guild.tag : '', crest: guild ? guild.crest : null,
+            services: service ? service.services : []
+        }];
+        if (recipient) recipient.send(message);
+        else this.forEachPlayer(function(player) {
+            if (player === entity || selfVisible(player, entity) || (entity.type === 'player' && player.session && entity.session && this.gameplay.social.party(player)?.members.includes(entity.session.profile.id))) player.send(message);
+        }.bind(this));
+        function selfVisible(player, entity) {
+            return Math.abs(player.x - entity.x) <= 60 && Math.abs(player.y - entity.y) <= 40;
+        }
     },
 
     setUpdatesPerSecond: function(ups) {
@@ -272,6 +298,7 @@ module.exports = World = cls.Class.extend({
             var entity = self.getEntityById(id);
             if(entity) {
                 self.pushToPlayer(player, new Messages.Spawn(entity));
+                self.sendEntityInfo(entity, player);
             }
         });
         
@@ -544,6 +571,8 @@ module.exports = World = cls.Class.extend({
     
     handleHurtEntity: function(entity, attacker, damage) {
         var self = this;
+        this.sendEntityInfo(entity);
+
         
         if(entity.type === 'player') {
             // A player is only aware of his own hitpoints
@@ -810,6 +839,12 @@ module.exports = World = cls.Class.extend({
                         } else {
                             self.pushToGroup(id, new Messages.Spawn(entity));
                         }
+                    });
+                    self.groups[id].incoming.forEach(function(entity) {
+                        self.groups[id].players.forEach(function(playerId) {
+                            var player = self.players[playerId];
+                            if (player) self.sendEntityInfo(entity, player);
+                        });
                     });
                     self.groups[id].incoming = [];
                 }

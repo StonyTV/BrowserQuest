@@ -8,7 +8,6 @@ define(['character', 'timer'], function(Character, Timer) {
         },
 
         update: function() {
-            this.updateZoning();
             this.updateCharacters();
             this.updatePlayerAggro();
             this.updateTransitions();
@@ -61,8 +60,7 @@ define(['character', 'timer'], function(Character, Timer) {
 
         updateTransitions: function() {
             var self = this,
-                m = null,
-                z = this.game.currentZoning;
+                m = null;
     
             this.game.forEachEntity(function(entity) {
                 m = entity.movement;
@@ -73,57 +71,6 @@ define(['character', 'timer'], function(Character, Timer) {
                 }
             });
         
-            if(z) {
-                if(z.inProgress) {
-                    z.step(this.game.currentTime);
-                }
-            }
-        },
-    
-        updateZoning: function() {
-            var g = this.game,
-                c = g.camera,
-                z = g.currentZoning,
-                s = 3,
-                ts = 16,
-                speed = 500;
-        
-            if(z && z.inProgress === false) {
-                var orientation = this.game.zoningOrientation,
-                    startValue = endValue = offset = 0,
-                    updateFunc = null,
-                    endFunc = null;
-            
-                if(orientation === Types.Orientations.LEFT || orientation === Types.Orientations.RIGHT) {
-                    offset = (c.gridW - 2) * ts;
-                    startValue = (orientation === Types.Orientations.LEFT) ? c.x - ts : c.x + ts;
-                    endValue = (orientation === Types.Orientations.LEFT) ? c.x - offset : c.x + offset;
-                    updateFunc = function(x) {
-                        c.setPosition(x, c.y);
-                        g.initAnimatedTiles();
-                        g.renderer.renderStaticCanvases();
-                    }
-                    endFunc = function() {
-                        c.setPosition(z.endValue, c.y);
-                        g.endZoning();
-                    }
-                } else if(orientation === Types.Orientations.UP || orientation === Types.Orientations.DOWN) {
-                    offset = (c.gridH - 2) * ts;
-                    startValue = (orientation === Types.Orientations.UP) ? c.y - ts : c.y + ts;
-                    endValue = (orientation === Types.Orientations.UP) ? c.y - offset : c.y + offset;
-                    updateFunc = function(y) { 
-                        c.setPosition(c.x, y);
-                        g.initAnimatedTiles();
-                        g.renderer.renderStaticCanvases();
-                    }
-                    endFunc = function() {
-                        c.setPosition(c.x, z.endValue);
-                        g.endZoning();
-                    }
-                }
-            
-                z.start(this.game.currentTime, updateFunc, endFunc, startValue, endValue, speed);
-            }
         },
 
         updateCharacter: function(c) {

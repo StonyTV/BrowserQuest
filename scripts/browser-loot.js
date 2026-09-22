@@ -6,9 +6,10 @@ async (page) => {
         if (!item) throw new Error('No equipment in loaded region');
         g.makePlayerGoToItem(item);
     });
-    await page.waitForFunction(() => document.querySelectorAll('#inventory-items li').length > 2, { timeout: 25000 });
+    await page.waitForFunction(() => __bqGame.profile.items.length > 2, {}, { timeout: 25000 });
     await page.getByRole('button', { name: 'Sac · I' }).click();
-    await page.getByRole('button', { name: 'Équiper', exact: true }).first().click();
+    await page.locator('#inventory-items .inventory-cell').filter({has:page.locator('.inventory-icon[style*=sword2]'),hasNot:page.locator('.equipped-mark')}).first().click();
+    await page.getByRole('button', { name: 'Équiper', exact: true }).click();
     await page.waitForFunction(() => window.__bqGame.player.getWeaponName() === 'sword2');
     await page.screenshot({ path: 'output/playwright/equipped-loot.png', scale: 'css' });
     await page.reload();

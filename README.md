@@ -1,4 +1,4 @@
-# BrowserQuest Revival — prototype RPG 0.2
+# BrowserQuest Revival — V2 sociale · jalon 0.3 alpha
 
 Reprise jouable de [Mozilla BrowserQuest](https://github.com/mozilla/BrowserQuest), dans un dépôt indépendant. Canvas 2D, JavaScript, Node et WebSocket. Le rendu pixel art et le monde original restent en place ; aucun React n'est nécessaire au moteur.
 
@@ -15,16 +15,19 @@ Ouvrir **http://127.0.0.1:8085**. Un seul processus sert le client et les WebSoc
 
 - Clic sur le sol : déplacement. Clic sur une créature : attaque automatique.
 - Clic sur un objet : ramassage, confirmé par le serveur.
-- **I** ou **Sac** : inventaire, équiper une arme/armure, jeter un objet non équipé.
-- **Entrée** : chat de proximité. **Échap** : fermer les panneaux.
+- **I** ou **Sac** : 24 cases fixes, sélectionner/équiper un objet, déplacer par glisser-déposer ou bouton tactile, jeter un objet non équipé.
+- **G** ou **Compagnons** : joueurs connectés, invitations et groupe de 5, guilde et banque.
+- **Ysée**, au point d’arrivée : création de guilde pour 25 or, nom/sigle et blason SVG à deux couleurs.
+- **Intendant**, à côté d’Ysée : coffre de 72 objets et dépôt/retrait d’or.
+- **Entrée** : chat de zone, commerce, recrutement, groupe ou guilde. **Échap** : fermer les panneaux.
 - Chaque créature tuée rapporte de l'or. Les rats peuvent aussi lâcher de l'équipement.
 - Les objets ont un rang, une rareté et un bonus de dégâts ou de défense.
 
-Le sac contient 24 objets, équipement porté compris. L'or est conservé mais n'a pas encore de dépense associée. Les consommables s'utilisent au ramassage comme dans le jeu original.
+Le sac contient 24 objets, équipement porté compris. L’or sert notamment à fonder une guilde. Les objets portés doivent être remplacés avant dépôt en banque. Les consommables s'utilisent au ramassage comme dans le jeu original.
 
 ## Sauvegarde et multijoueur
 
-Nom, inventaire, équipement, or et nombre de victoires sont conservés dans `data/characters.sqlite`. Le serveur crée une clé aléatoire, stockée dans ce navigateur ; seul son hash est enregistré en base. Un même personnage ne peut pas être connecté deux fois. Chaque reconnexion replace le personnage au village et restaure ses points de vie. Les succès historiques restent locaux au navigateur.
+Nom, cases du sac, équipement, banque, or, victoires et guildes (blason, rangs et membres) sont conservés dans `data/characters.sqlite`. Le serveur crée une clé aléatoire, stockée dans ce navigateur ; seul son hash est enregistré en base. Un même personnage ne peut pas être connecté deux fois. Chaque reconnexion replace le personnage près des PNJ de guilde et de banque et restaure ses points de vie. Les groupes et leurs invitations sont temporaires ; le chef change lorsqu’il quitte le groupe. Les succès historiques restent locaux au navigateur.
 
 Deux fenêtres de navigation privée distinctes permettent de jouer deux personnages. Deux onglets partageant le stockage représentent le même personnage : le second est refusé. Pour un test LAN : `HOST=0.0.0.0 npm start`, puis utiliser l'IP de cette machine et le port 8085 sur les deux appareils.
 
@@ -43,6 +46,14 @@ npm run vendor   # recopier les dépendances navigateur depuis le lockfile
 Le mode `?qa=1` expose l'instance cliente sous `window.__bqGame` pour les tests Canvas. Il ne donne aucun pouvoir supplémentaire au serveur. Les scripts `scripts/browser-*.js` sont des fonctions de parcours pour Playwright CLI, sur un personnage de test déjà connecté ; ils utilisent le client réel. Les captures et traces locales vont dans `output/playwright/` (ignoré par Git).
 
 L'ancien empaquetage `bin/build.sh` a été remplacé par les fichiers servis directement et `npm run vendor`. Aucun build client n'est requis pour ce jalon.
+
+## Architecture V2 et suite
+
+Le Canvas conserve les sprites et la carte BrowserQuest. La caméra suit le personnage sur tout l’écran ; le HUD et les panneaux DOM passent au-dessus. Les vues sont séparées en `client/js/ui/{items,social,chat,dom}.js`, avec un rendu SVG autonome pour les blasons. Le serveur regroupe les règles dans `server/js/domain/{gameplay,social,bank,rules}.js`. Coûts, capacités, canaux et services sont déclarés dans `shared/content/social.json`.
+
+Ce jalon valide le socle social ; **le goal V2 reste actif**. MongoDB, autorité complète du mouvement, progression/classes, métiers/craft et percepteurs ne sont pas encore implémentés. [Le suivi V2](docs/V2.md) distingue les preuves obtenues et le travail restant.
+
+Pour reproduire le parcours visuel isolé : `node scripts/prepare-social-qa.js`, puis dans un autre terminal `PORT=8086 BQ_DATABASE=output/social-qa.sqlite npm start`. Exécuter la fonction générée `output/browser-social-run.js` avec Playwright CLI `run-code`, puis `scripts/browser-mobile.js`. La préparation injecte seulement des personnages de test dans `output/` et ne modifie pas `data/characters.sqlite`.
 
 ## Documents
 

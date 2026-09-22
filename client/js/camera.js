@@ -13,14 +13,8 @@ define(function() {
         },
     
         rescale: function() {
-            var factor = this.renderer.mobile ? 1 : 2;
-        
-            this.gridW = 15 * factor;
-            this.gridH = 7 * factor;
-        
-            log.debug("---------");
-            log.debug("Factor:"+factor);
-            log.debug("W:"+this.gridW + " H:" + this.gridH);
+            this.gridW = Math.ceil(window.innerWidth / (16 * this.renderer.scale));
+            this.gridH = Math.ceil(window.innerHeight / (16 * this.renderer.scale));
         },
 
         setPosition: function(x, y) {
@@ -40,10 +34,13 @@ define(function() {
         },
 
         lookAt: function(entity) {
-            var r = this.renderer,
-                x = Math.round( entity.x - (Math.floor(this.gridW / 2) * r.tilesize) ),
-                y = Math.round( entity.y - (Math.floor(this.gridH / 2) * r.tilesize) );
-    
+            var map = this.renderer.game.map;
+            var x = Math.round(entity.x + 8 - window.innerWidth / (2 * this.renderer.scale));
+            var y = Math.round(entity.y + 8 - window.innerHeight / (2 * this.renderer.scale));
+            if (map) {
+                x = Math.max(0, Math.min(x, Math.max(0, map.width * 16 - window.innerWidth / this.renderer.scale)));
+                y = Math.max(0, Math.min(y, Math.max(0, map.height * 16 - window.innerHeight / this.renderer.scale)));
+            }
             this.setPosition(x, y);
         },
 
@@ -69,14 +66,8 @@ define(function() {
             }
         },
     
-        focusEntity: function(entity) {
-            var w = this.gridW - 2,
-                h = this.gridH - 2,
-                x = Math.floor((entity.gridX - 1) / w) * w,
-                y = Math.floor((entity.gridY - 1) / h) * h;
+        focusEntity: function(entity) { this.lookAt(entity); }
 
-            this.setGridPosition(x, y);
-        }
     });
 
     return Camera;

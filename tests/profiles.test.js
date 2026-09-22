@@ -35,3 +35,32 @@ test('SQLite survives a store restart and token guesses cannot claim a character
         assert.notEqual(store.open('', 'Hero').token, session.token);
     } finally { store.close(); rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('fixed slots swap without duplication and bank transfers preserve item identity', () => {
+    const { moveSlot, normalizeProfile } = require('../server/js/profiles');
+    const { transferItem, transferGold } = require('../server/js/domain/bank');
+    const profile = createProfile('Banker');
+    const sword = createItem(61, 95);
+    profile.items.push(sword);
+    normalizeProfile(profile);
+    assert.equal(sword.slot, 2);
+    assert.equal(moveSlot(profile, sword.id, 23), true);
+    assert.equal(moveSlot(profile, profile.items[0].id, 23), true);
+    assert.equal(sword.slot, 0);
+    assert.equal(moveSlot(profile, sword.id, -1), false);
+    assert.equal(moveSlot(profile, 'forged', 1), false);
+    assert.throws(() => transferItem(profile, profile.equipped.weapon, true));
+    transferItem(profile, sword.id, true);
+    assert.equal(profile.items.length, 2);
+    assert.equal(profile.bank.items[0].id, sword.id);
+    assert.throws(() => transferItem(profile, sword.id, true));
+    transferItem(profile, sword.id, false);
+    assert.equal(profile.bank.items.length, 0);
+    assert.equal(new Set(profile.items.map(item => item.slot)).size, 3);
+    profile.gold = 100;
+    transferGold(profile, 40, true);
+    assert.deepEqual([profile.gold, profile.bank.gold], [60,40]);
+    for (const amount of [-1, 0, 1.5, Infinity, 41]) assert.throws(() => transferGold(profile, amount, false));
+    transferGold(profile, 40, false);
+    assert.equal(profile.gold, 100);
+});

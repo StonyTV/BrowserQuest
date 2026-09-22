@@ -110,22 +110,20 @@ define(['jquery', 'storage'], function($, Storage) {
                 this.center();
                 this.game.run(function() {
                     $('body').addClass('started');
-                	if(firstTimePlaying) {
-                	    self.toggleInstructions();
-                	}
+                    if (firstTimePlaying && self.game.onEvent) {
+                        self.game.onEvent('notice', {message: 'Cliquez pour marcher, combattre ou ramasser. I : sac · G : compagnons · Entrée : discussion.'});
+                    }
             	});
             }
         },
 
         setMouseCoordinates: function(event) {
-            var gamePos = $('#container').offset(),
-                scale = this.game.renderer.getScaleFactor(),
+            var rect = document.getElementById('foreground').getBoundingClientRect(),
                 width = this.game.renderer.getWidth(),
                 height = this.game.renderer.getHeight(),
                 mouse = this.game.mouse;
-
-            mouse.x = event.pageX - gamePos.left - (this.isMobile ? 0 : 5 * scale);
-        	mouse.y = event.pageY - gamePos.top - (this.isMobile ? 0 : 7 * scale);
+            mouse.x = (event.clientX - rect.left) * width / rect.width;
+            mouse.y = (event.clientY - rect.top) * height / rect.height;
 
         	if(mouse.x <= 0) {
         	    mouse.x = 0;

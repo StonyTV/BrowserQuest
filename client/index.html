@@ -27,9 +27,10 @@ Mozilla presents an HTML5 mini-MMORPG by Little Workshop http://www.littleworksh
         <meta property="og:image" content="http://browserquest.mozilla.org/img/common/promo-title.jpg">
         <meta property="og:site_name" content="BrowserQuest">
         <meta property="og:description" content="Play Mozilla's BrowserQuest, an HTML5 massively multiplayer game demo powered by WebSockets!">
-        <link rel="stylesheet" href="css/inventory.css">
+
         <link rel="stylesheet" href="css/main.css" type="text/css">
         <link rel="stylesheet" href="css/achievements.css" type="text/css">
+        <link rel="stylesheet" href="css/inventory.css">
         <script src="js/lib/modernizr.js" type="text/javascript"></script>
         <!--[if lt IE 9]>
                 <link rel="stylesheet" href="css/ie.css" type="text/css">
@@ -45,16 +46,30 @@ Mozilla presents an HTML5 mini-MMORPG by Little Workshop http://www.littleworksh
 	<body class="intro upscaled">
     <![endif]-->
 	<body class="intro">
-        <div id="rpg-hud" hidden>
+        <nav id="rpg-hud" aria-label="Actions de l’aventurier" hidden>
             <button id="inventory-toggle" aria-controls="inventory-panel" aria-expanded="false">Sac · I</button>
+            <button id="social-toggle" aria-controls="social-panel" aria-expanded="false">Compagnons · G</button>
+            <button id="sound-toggle" aria-label="Couper les effets sonores" aria-pressed="false">Son</button>
             <span id="gold-count">0 or</span>
-        </div>
-        <section id="inventory-panel" aria-label="Inventaire" hidden>
-            <header><h2>Votre équipement</h2><button id="inventory-close" aria-label="Fermer le sac">✕</button></header>
+        </nav>
+        <aside id="vitals"><strong id="vitals-label"></strong><progress id="vitals-health" aria-label="Votre vie" max="80" value="80"></progress></aside>
+        <aside id="party-hud" aria-label="Membres du groupe"></aside>
+        <section id="inventory-panel" class="rpg-panel" aria-label="Inventaire" hidden>
+            <header><div><small>AVENTURIER</small><h2>Équipement &amp; sac</h2></div><button id="inventory-close" aria-label="Fermer le sac">×</button></header>
+            <div id="equipped-items"></div>
             <p id="inventory-summary"></p>
-            <ul id="inventory-items"></ul>
-            <p>Le butin rejoint votre sac. Choisissez les objets à équiper.<br>Les bonus s’ajoutent aux caractéristiques du rang.</p>
-            <p>Progression sauvegardée sur le serveur pour ce navigateur.</p>
+            <div class="inventory-layout"><div id="inventory-items"></div><aside id="inventory-details"></aside></div>
+            <footer>◆ Équipé · Glissez un objet pour le ranger</footer>
+        </section>
+        <section id="social-panel" class="rpg-panel" aria-label="Compagnons" hidden>
+            <header><div><small>LE MONDE VIVANT</small><h2>Compagnons</h2></div><button id="social-close" aria-label="Fermer les compagnons">×</button></header>
+            <nav id="social-tabs" aria-label="Espace social"></nav>
+            <div id="social-content"></div>
+        </section>
+        <section id="rpg-chat" aria-label="Discussion" hidden>
+            <button id="chat-toggle" aria-label="Réduire ou ouvrir la discussion">Discussion · ↵</button>
+            <div id="rpg-chat-log" role="log" aria-live="polite"></div>
+            <form id="rpg-chat-form"><input id="rpg-chat-input" aria-label="Message" placeholder="Parler aux aventuriers…" maxlength="180" autocomplete="off"><button type="submit" aria-label="Envoyer">↵</button></form>
         </section>
         <div id="connection-error" role="alert" hidden><p id="connection-reason"></p><button onclick="location.reload()">Se reconnecter</button></div>
 	    <noscript>

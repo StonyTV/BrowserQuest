@@ -30,7 +30,7 @@ server.onConnect(connection => {
 });
 server.onRequestStatus(() => JSON.stringify({
     version: require('../../package.json').version,
-    protocol: 2,
+    protocol: 3,
     ready: worlds.every(world => world.zoneGroupsReady),
     worlds: worlds.map(world => ({ id: world.id, players: world.playerCount, capacity: world.maxPlayers }))
 }));

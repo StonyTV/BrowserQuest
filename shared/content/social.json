@@ -1,0 +1,73 @@
+{
+  "guild": {
+    "cost": 25,
+    "maxMembers": 30,
+    "nameMin": 3,
+    "nameMax": 24,
+    "tagMin": 2,
+    "tagMax": 5
+  },
+  "party": {
+    "maxMembers": 5,
+    "inviteLifetimeMs": 60000
+  },
+  "bank": {
+    "capacity": 72
+  },
+  "channels": {
+    "zone": {
+      "label": "Zone",
+      "cooldownMs": 1000
+    },
+    "trade": {
+      "label": "Commerce",
+      "cooldownMs": 5000
+    },
+    "recruitment": {
+      "label": "Recrutement",
+      "cooldownMs": 5000
+    },
+    "party": {
+      "label": "Groupe",
+      "cooldownMs": 500
+    },
+    "guild": {
+      "label": "Guilde",
+      "cooldownMs": 500
+    }
+  },
+  "services": [
+    {
+      "kind": 43,
+      "name": "Ysée · Maison des guildes",
+      "services": [
+        "guild"
+      ]
+    },
+    {
+      "kind": 40,
+      "name": "Intendant · Banque",
+      "services": [
+        "bank"
+      ],
+      "position": {
+        "x": 18,
+        "y": 222
+      }
+    }
+  ],
+  "crest": {
+    "frames": [
+      "shield",
+      "round",
+      "banner"
+    ],
+    "symbols": [
+      "sun",
+      "oak",
+      "sword",
+      "stag"
+    ]
+  },
+  "startingCheckpoint": 4
+}

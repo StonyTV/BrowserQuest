@@ -32,7 +32,10 @@ Types = {
         PROFILE: 27,
         INVENTORY_EQUIP: 28,
         INVENTORY_DISCARD: 29,
-        LOOT_RESULT: 30
+        LOOT_RESULT: 30,
+        COMMAND: 31,
+        EVENT: 32,
+        ENTITY_INFO: 33
     },
     
     Entities: {

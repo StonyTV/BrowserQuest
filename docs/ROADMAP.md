@@ -1,3 +1,5 @@
+> Cet état des lieux correspond au jalon 0.2. La branche `codex/mmorpg-v2` a depuis ajouté inventaire en grille, banque, groupes, guildes et chat multicanal. Le suivi actuel est dans [V2.md](V2.md) ; les limites de mouvement et d’identité ci-dessous restent à traiter.
+
 # État des lieux et direction
 
 ## Ce qui mérite d'être conservé

@@ -52,7 +52,7 @@ define(['jquery', 'animation', 'sprites'], function($, Animation, sprites) {
     	createHurtSprite: function() {
             if (!this.isLoaded) return;
     	    var canvas = document.createElement('canvas'),
-    	        ctx = canvas.getContext('2d'),
+                ctx = canvas.getContext('2d', { willReadFrequently: true }),
     	        width = this.image.width,
     		    height = this.image.height,
     	        spriteData, data;
@@ -93,7 +93,7 @@ define(['jquery', 'animation', 'sprites'], function($, Animation, sprites) {
 	
     	createSilhouette: function() {
     	    var canvas = document.createElement('canvas'),
-    	        ctx = canvas.getContext('2d'),
+                ctx = canvas.getContext('2d', { willReadFrequently: true }),
     	        width = this.image.width,
     		    height = this.image.height,
     	        spriteData, finalData, data;

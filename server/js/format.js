@@ -21,6 +21,7 @@ var _ = require('underscore'),
             this.formats[Types.Messages.CHECK] = ['n'];
             this.formats[Types.Messages.INVENTORY_EQUIP] = ['s'];
             this.formats[Types.Messages.INVENTORY_DISCARD] = ['s'];
+            this.formats[Types.Messages.COMMAND] = ['s', 'o'];
         },
         
         check: function(msg) {
@@ -36,6 +37,7 @@ var _ = require('underscore'),
                     return false;
                 }
                 for(var i = 0, n = message.length; i < n; i += 1) {
+                    if (format[i] === 'o' && (!message[i] || typeof message[i] !== 'object' || Array.isArray(message[i]))) return false;
                     if(format[i] === 'n' && !Number.isSafeInteger(message[i])) {
                         return false;
                     }

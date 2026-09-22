@@ -47,25 +47,44 @@ Mozilla presents an HTML5 mini-MMORPG by Little Workshop http://www.littleworksh
     <![endif]-->
 	<body class="intro">
         <nav id="rpg-hud" aria-label="Actions de l’aventurier" hidden>
-            <button id="inventory-toggle" aria-controls="inventory-panel" aria-expanded="false">Sac · I</button>
-            <button id="social-toggle" aria-controls="social-panel" aria-expanded="false">Compagnons · G</button>
-            <button id="sound-toggle" aria-label="Couper les effets sonores" aria-pressed="false">Son</button>
-            <span id="gold-count">0 or</span>
+            <button id="inventory-toggle" class="hud-action" aria-label="Sac · I" aria-controls="inventory-panel" aria-expanded="false" aria-keyshortcuts="I"><img src="img/ui/bag.png" alt="" width="32" height="32"><kbd aria-hidden="true">I</kbd><span class="hud-tooltip" aria-hidden="true">Sac</span></button>
+            <button id="social-toggle" class="hud-action" aria-label="Compagnons · G" aria-controls="social-panel" aria-expanded="false" aria-keyshortcuts="G"><img src="img/ui/companions.png" alt="" width="32" height="32"><kbd aria-hidden="true">G</kbd><span id="social-badge" class="hud-badge" hidden></span><span class="hud-tooltip" aria-hidden="true">Compagnons</span></button>
+            <button id="sound-toggle" class="hud-action" aria-label="Couper les effets sonores" aria-pressed="false"><img src="img/ui/sound.png" alt="" width="32" height="32"><span class="hud-tooltip" aria-hidden="true">Son</span></button>
+            <span id="gold-display" class="hud-purse" aria-label="0 pièces d’or"><img src="img/ui/coins.png" alt="" width="32" height="32"><span id="gold-count">0</span></span>
         </nav>
         <aside id="vitals"><strong id="vitals-label"></strong><progress id="vitals-health" aria-label="Votre vie" max="80" value="80"></progress></aside>
         <aside id="party-hud" aria-label="Membres du groupe"></aside>
         <section id="inventory-panel" class="rpg-panel" aria-label="Inventaire" hidden>
-            <header><div><small>AVENTURIER</small><h2>Équipement &amp; sac</h2></div><button id="inventory-close" aria-label="Fermer le sac">×</button></header>
+            <header><div><small>AVENTURIER</small><h2>Équipement &amp; sac</h2></div><button id="inventory-close" class="icon-close" aria-label="Fermer le sac"><img src="img/ui/close.png" alt="" width="32" height="32"></button></header>
             <div id="equipped-items"></div>
             <p id="inventory-summary"></p>
             <div class="inventory-layout"><div id="inventory-items"></div><aside id="inventory-details"></aside></div>
             <footer>◆ Équipé · Glissez un objet pour le ranger</footer>
         </section>
         <section id="social-panel" class="rpg-panel" aria-label="Compagnons" hidden>
-            <header><div><small>LE MONDE VIVANT</small><h2>Compagnons</h2></div><button id="social-close" aria-label="Fermer les compagnons">×</button></header>
+            <header><div><small>LE MONDE VIVANT</small><h2>Compagnons</h2></div><button id="social-close" class="icon-close" aria-label="Fermer les compagnons"><img src="img/ui/close.png" alt="" width="32" height="32"></button></header>
             <nav id="social-tabs" aria-label="Espace social"></nav>
             <div id="social-content"></div>
         </section>
+        <section id="bank-panel" class="rpg-panel" aria-label="Banque" hidden>
+            <header><div><small>L’INTENDANT</small><h2>Banque du village</h2></div><button id="bank-close" class="icon-close" aria-label="Fermer la banque"><img src="img/ui/close.png" alt="" width="32" height="32"></button></header>
+            <div id="bank-content"></div>
+        </section>
+        <dialog id="guild-create-dialog" class="rpg-panel guild-foundation" aria-labelledby="guild-create-title" aria-describedby="guild-create-intro">
+            <header><div class="guild-foundation-title"><img src="img/ui/guild.png" alt="" width="32" height="32"><div><small>REGISTRE DES GUILDES</small><h2 id="guild-create-title">Fondez votre guilde</h2></div></div><button id="guild-create-close" class="icon-close" aria-label="Fermer la création de guilde"><img src="img/ui/close.png" alt="" width="32" height="32"></button></header>
+            <p id="guild-create-intro">Un nom, une bannière, une aventure à partager.</p>
+            <form id="guild-create-form">
+                <div class="guild-foundation-layout">
+                    <aside class="guild-banner-preview"><span class="guild-preview-caption">VOTRE BANNIÈRE</span><div id="guild-create-preview"></div><h3 id="guild-preview-name">Votre guilde</h3><span id="guild-preview-tag">[SIGLE]</span><p>Votre blason accompagnera les membres de votre guilde.</p></aside>
+                    <div class="guild-foundation-fields">
+                        <div class="guild-identity-fields"><label class="rpg-field">Nom de la guilde<input name="guildName" aria-label="Nom de la guilde" placeholder="Les Veilleurs de l’Aube" required minlength="3" maxlength="24" autocomplete="off"><small>3 à 24 caractères</small></label><label class="rpg-field">Sigle<input name="guildTag" aria-label="Sigle · 2 à 5 lettres" placeholder="AUBE" required minlength="2" maxlength="5" pattern="[A-Za-z0-9]{2,5}" autocomplete="off"><small>2 à 5 lettres ou chiffres</small></label></div>
+                        <div id="guild-create-crest"></div>
+                    </div>
+                </div>
+                <p id="guild-create-feedback" class="form-error" role="alert"></p>
+                <footer class="guild-foundation-footer"><div class="guild-founding-price"><span>Coût de fondation</span><strong><img src="img/ui/coins.png" alt="" width="32" height="32"><span id="guild-create-cost">25</span> pièces d’or</strong><small id="guild-create-wallet"></small><small id="guild-create-shortfall" class="form-error" hidden>Votre bourse ne contient pas assez d’or.</small></div><div class="guild-foundation-actions"><button id="guild-create-cancel" type="button">Annuler</button><button id="guild-create-submit" type="submit" class="primary">Fonder la guilde</button></div></footer>
+            </form>
+        </dialog>
         <section id="rpg-chat" aria-label="Discussion" hidden>
             <button id="chat-toggle" aria-label="Réduire ou ouvrir la discussion">Discussion · ↵</button>
             <div id="rpg-chat-log" role="log" aria-live="polite"></div>

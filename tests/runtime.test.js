@@ -240,6 +240,57 @@ test('a full bag rejects equipment without deleting the world item', async () =>
     assert.equal((await waitFor(hero, message => message[0] === 2 && message[1] === sword[1]))[2], 61);
 });
 
+test('two players racing for the same world item persist exactly one copy', async () => {
+    const first = await connect('FirstLooter'), second = await connect('SecondLooter');
+    const list = await waitFor(first, message => message[0] === 19);
+    first.send([20, ...list.slice(1)]);
+    const sword = await waitFor(first, message => message[0] === 2 && message[2] === 61);
+    await Promise.all([moveTo(first, sword[3], sword[4]), moveTo(second, sword[3], sword[4])]);
+    first.send([12, sword[1]]); second.send([12, sword[1]]);
+    await Promise.race([first, second].map(peer => waitFor(peer, message => message[0] === 27)));
+    // Reconnect both identities: verify durable ownership, not just client messages.
+    for (const peer of [first, second]) {
+        const closed = once(peer.socket, 'close'); peer.socket.close(); await closed;
+    }
+    const returned = await Promise.all([first, second].map(peer => connect('Ignored', peer.profile.token)));
+    assert.equal(returned.reduce((count, peer) => count + peer.profile.items.filter(item => item.kind === 61).length, 0), 1);
+    assert.deepEqual(returned.map(peer => peer.profile.items.length).sort(), [2, 3]);
+});
+
+test('simultaneous guild creation and replay charge only the successful founder', async () => {
+    const store = await openStore();
+    const sessions = [];
+    for (const name of ['FounderOne', 'FounderTwo']) {
+        const session = await store.open('', name); session.profile.gold = 100;
+        await store.save(session); sessions.push(session);
+    }
+    await store.close();
+    const founders = await Promise.all(sessions.map(session => connect(session.profile.name, session.token)));
+    await Promise.all(founders.map(async peer => {
+        const list = await waitFor(peer, message => message[0] === 19);
+        peer.send([20, ...list.slice(1)]);
+        const npc = await waitFor(peer, message => message[0] === 2 && message[2] === 43);
+        await moveTo(peer, npc[3], npc[4], 1);
+        peer.send([31, 'service.open', {id:npc[1]}]);
+        await waitFor(peer, message => message[0] === 32 && message[1] === 'service');
+    }));
+    const payload = {name:'Concurrent Founders', tag:'DUEL', crest:{frame:'shield',symbol:'sun',primary:'#112233',secondary:'#aabbcc'}};
+    for (const peer of founders) peer.send([31, 'guild.create', payload]);
+    const outcomes = await Promise.all(founders.map(peer => waitFor(peer, message => message[0] === 27 || (message[0] === 32 && message[1] === 'notice'))));
+    assert.equal(outcomes.filter(message => message[0] === 27).length, 1);
+    const failure = outcomes.find(message => message[0] === 32)[2];
+    assert.equal(failure.action, 'guild.create'); assert.match(failure.message, /déjà utilisé/);
+    for (const peer of founders) peer.send([31, 'guild.create', payload]);
+    await Promise.all(founders.map(peer => waitFor(peer, message => message[0] === 32 && message[1] === 'notice')));
+    const reopened = await openStore();
+    try {
+        const profiles = await Promise.all(sessions.map(session => reopened.open(session.token)));
+        assert.deepEqual(profiles.map(session => session.profile.gold).sort((a,b) => a-b), [75,100]);
+        assert.equal(profiles.filter(session => session.profile.guildId).length, 1);
+        assert.equal([...reopened.guilds.values()].filter(guild => guild.tag === 'DUEL').length, 1);
+    } finally { await reopened.close(); }
+});
+
 test('guilds, parties and bank enforce ownership, privacy and persistent membership', async () => {
     const { createItem } = require('../server/js/profiles');
     const store = await openStore();

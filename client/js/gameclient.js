@@ -93,6 +93,8 @@ define(['player', 'entityfactory', 'lib/bison'], function(Player, EntityFactory,
                 };
 
                 this.connection.onclose = function(event) {
+                    var creation = document.getElementById('guild-create-dialog');
+                    if (creation && creation.open) creation.close();
                     document.getElementById('connection-reason').textContent = 'Connexion interrompue. ' + (event.reason || 'Le serveur est peut-être en cours de redémarrage.');
                     document.getElementById('connection-error').hidden = false;
                     log.debug("Connection closed");

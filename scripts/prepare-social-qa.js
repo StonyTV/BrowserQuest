@@ -12,14 +12,18 @@ async function prepare() {
         await store.connect();
         const leader = await store.open('', 'ChefQA'), member = await store.open('', 'AmiQA');
         leader.profile.gold = 100;
+        member.profile.gold = 100; await store.save(member);
+        const poor = await store.open('', 'ApprentiQA');
         leader.profile.items.push(createItem(61,95));
         await store.save(leader);
-        const fixture = {leader:leader.token, member:member.token};
-        const script = fs.readFileSync('scripts/browser-social.js', 'utf8')
-            .replace('const fixture = null;', 'const fixture = ' + JSON.stringify(fixture) + ';')
-            .replaceAll('Veilleurs QA', 'Veilleurs ' + Date.now().toString(36))
-            .replaceAll('VQA', 'Q' + Date.now().toString(36).slice(-4).toUpperCase());
-        fs.writeFileSync('output/browser-social-run.js', script);
+        const fixture = {leader:leader.token, member:member.token, poor:poor.token};
+        for (const name of ['browser-social', 'browser-guild-ui']) {
+            const script = fs.readFileSync('scripts/' + name + '.js', 'utf8')
+                .replace('const fixture = null;', 'const fixture = ' + JSON.stringify(fixture) + ';')
+                .replaceAll('Veilleurs QA', 'Veilleurs ' + Date.now().toString(36))
+                .replaceAll('VQA', 'Q' + Date.now().toString(36).slice(-4).toUpperCase());
+            fs.writeFileSync('output/' + name + '-run.js', script);
+        }
         console.log('Isolated MongoDB social QA characters prepared in ' + database);
     } finally { await store.close(); }
 }

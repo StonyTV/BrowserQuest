@@ -1,4 +1,4 @@
-define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat'], function(dom, items, SocialUI, ChatUI) {
+define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creation'], function(dom, items, SocialUI, ChatUI, BankUI, GuildCreation) {
     return function(game) {
         var panel = document.getElementById('inventory-panel');
         var toggle = document.getElementById('inventory-toggle');
@@ -8,31 +8,38 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat'], function(dom, items, Soci
         function command(action, payload) { game.client.sendMessage([Types.Messages.COMMAND, action, payload || {}]); }
         var social = SocialUI(game, command);
         var chat = ChatUI(game, command);
+        var bank = BankUI(command);
+        var creation = GuildCreation(command);
         document.getElementById('sound-toggle').onclick = function() {
             game.audioManager.toggle();
-            this.textContent = game.audioManager.enabled ? 'Son' : 'Muet';
+            this.querySelector('.hud-tooltip').textContent = game.audioManager.enabled ? 'Son' : 'Son coupé';
             this.setAttribute('aria-pressed', String(!game.audioManager.enabled));
             this.setAttribute('aria-label', game.audioManager.enabled ? 'Couper les effets sonores' : 'Activer les effets sonores');
         };
         function open(name) {
-            ['inventory', 'social'].forEach(function(id) {
+            if (creation.isOpen()) return;
+            ['inventory', 'social', 'bank'].forEach(function(id) {
                 document.getElementById(id + '-panel').hidden = id !== name;
-                document.getElementById(id + '-toggle').setAttribute('aria-expanded', String(id === name));
+                var button = document.getElementById(id + '-toggle');
+                if (button) button.setAttribute('aria-expanded', String(id === name));
             });
         }
         toggle.onclick = function() { open(panel.hidden ? 'inventory' : null); };
         document.getElementById('inventory-close').onclick = function() { open(null); toggle.focus(); };
         document.getElementById('social-toggle').onclick = function() { open(document.getElementById('social-panel').hidden ? 'social' : null); };
         document.getElementById('social-close').onclick = function() { open(null); };
+        document.getElementById('bank-close').onclick = function() { open(null); };
         document.addEventListener('keydown', function(event) {
+            if (creation.isOpen()) return;
+            if (event.key === 'Escape') { open(null); return; }
             if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || !game.started) return;
             if (event.key.toLowerCase() === 'i') { toggle.click(); event.preventDefault(); }
             if (event.key.toLowerCase() === 'g') { document.getElementById('social-toggle').click(); event.preventDefault(); }
-            if (event.key === 'Escape') open(null);
         });
         function move(id, slot) { moving = false; command('inventory.move', { id: id, slot: slot }); }
         function render() {
-            document.getElementById('gold-count').textContent = profile.gold + ' or';
+            document.getElementById('gold-count').textContent = profile.gold.toLocaleString('fr-FR');
+            document.getElementById('gold-display').setAttribute('aria-label', profile.gold + ' pièces d’or');
             document.getElementById('inventory-summary').textContent = profile.items.length + ' / ' + profile.capacity + ' cases · ' + profile.kills + ' victoires';
             list.replaceChildren(items.grid(profile.items, profile.capacity, {
                 selected: selected, equipped: profile.equipped, move: move,
@@ -68,6 +75,8 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat'], function(dom, items, Soci
                 gear.append(button);
             });
             social.profile(profile);
+            bank.profile(profile);
+            creation.profile(profile);
         }
         game.onProfile = function(next) {
             profile = next;
@@ -89,9 +98,18 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat'], function(dom, items, Soci
         };
         game.onEvent = function(type, data) {
             if (type === 'chat') chat.message(data);
-            else if (type === 'notice') chat.notice(data.message);
-            else if (type === 'social') { social.state(data); chat.social(data); }
-            else if (type === 'service') { social.service(data); open('social'); }
+            else if (type === 'notice') { chat.notice(data.message); creation.notice(data); }
+            else if (type === 'social') {
+                social.state(data); chat.social(data);
+                if (data.guild && creation.isOpen()) { creation.complete(); social.show('guild'); open('social'); }
+            }
+            else if (type === 'service') {
+                if (data.services.includes('bank')) open('bank');
+                else if (data.services.includes('guild')) {
+                    if (profile.guildId) { social.show('guild'); open('social'); }
+                    else { open(null); creation.open(profile); }
+                }
+            }
         };
     };
 });

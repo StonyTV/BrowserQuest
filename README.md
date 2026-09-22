@@ -1,4 +1,4 @@
-# BrowserQuest Revival — V2 sociale · jalon 0.3 alpha 4
+# BrowserQuest Revival — V2 sociale · jalon 0.3 alpha 5
 
 Reprise jouable de [Mozilla BrowserQuest](https://github.com/mozilla/BrowserQuest), dans un dépôt indépendant. Canvas 2D, JavaScript, Node et WebSocket. Le rendu pixel art et le monde original restent en place ; aucun React n'est nécessaire au moteur.
 
@@ -19,14 +19,16 @@ Pour conserver les personnages d’un ancien jalon SQLite : arrêter le jeu, ex�
 - Clic sur le sol : déplacement. Clic sur une créature : attaque automatique.
 - Clic sur un objet : ramassage, confirmé par le serveur.
 - **I** ou **Sac** : 24 cases fixes, sélectionner/équiper un objet, déplacer par glisser-déposer ou bouton tactile, jeter un objet non équipé.
-- **G** ou **Compagnons** : joueurs connectés, invitations et groupe de 5, guilde et banque.
-- **Ysée**, au point d’arrivée : création de guilde pour 25 or, nom/sigle et blason SVG à deux couleurs.
-- **Intendant**, à côté d’Ysée : coffre de 72 objets et dépôt/retrait d’or.
+- **G** ou **Compagnons** : joueurs connectés, invitations, groupe de 5 et guilde ; chaque onglet garde son sujet.
+- **Ysée**, au point d’arrivée : écran de fondation centré pour 25 or, nom/sigle et aperçu du blason SVG à deux couleurs.
+- **Intendant**, à côté d’Ysée : panneau bancaire dédié, coffre de 72 objets et dépôt/retrait d’or.
 - **Entrée** : chat de zone, commerce, recrutement, groupe ou guilde. **Échap** : fermer les panneaux.
 - Chaque créature tuée rapporte de l'or. Les rats peuvent aussi lâcher de l'équipement.
 - Les objets ont un rang, une rareté et un bonus de dégâts ou de défense.
 
 Le sac contient 24 objets, équipement porté compris. L’or sert notamment à fonder une guilde. Les objets portés doivent être remplacés avant dépôt en banque. Les consommables s'utilisent au ramassage comme dans le jeu original.
+
+Le HUD utilise des icônes pixel art natives : sac, compagnons et cor sonore, avec les raccourcis I/G et des infobulles. Le badge des compagnons signale les invitations. La fondation de guilde a son propre écran modal, sans onglets sociaux ; le brouillon reste intact pendant les mises à jour multijoueurs.
 
 ## Sauvegarde et multijoueur
 
@@ -53,7 +55,7 @@ L'ancien empaquetage `bin/build.sh` a été remplacé par les fichiers servis di
 
 ## Architecture V2 et suite
 
-Le Canvas conserve les sprites et la carte BrowserQuest. La caméra suit le personnage sur tout l’écran ; le HUD et les panneaux DOM passent au-dessus. Les vues sont séparées en `client/js/ui/{items,social,chat,dom}.js`, avec un rendu SVG autonome pour les blasons. Le serveur regroupe les règles dans `server/js/domain/{gameplay,social,bank,rules,movement,mob-ai}.js`. Coûts, capacités, canaux et services sont déclarés dans `shared/content/social.json`.
+Le Canvas conserve les sprites et la carte BrowserQuest. La caméra suit le personnage sur tout l’écran ; le HUD et les panneaux DOM passent au-dessus. Les vues sont séparées en `client/js/ui/{items,social,chat,bank,guild-creation,crest-editor,dom}.js`, avec un rendu SVG autonome pour les blasons. Le serveur regroupe les règles dans `server/js/domain/{gameplay,social,bank,rules,movement,mob-ai}.js`. Coûts, capacités, canaux et services sont déclarés dans `shared/content/social.json`.
 
 Ce jalon valide le socle social ; **le goal V2 reste actif**. MongoDB est le stockage par défaut, avec migration et transactions vérifiées. Les chemins des joueurs sont validés et exécutés par le serveur ; le client conserve une animation prédictive. Les monstres détectent, poursuivent et attaquent côté serveur. Progression/classes, métiers/craft et percepteurs restent à réaliser. [Le suivi V2](docs/V2.md) distingue les preuves obtenues et le travail restant.
 
@@ -63,7 +65,7 @@ Ce jalon valide le socle social ; **le goal V2 reste actif**. MongoDB est le sto
 
 Pour reproduire le combat multijoueur isolé : `node scripts/prepare-combat-qa.js`, `PORT=8086 MONGODB_DATABASE=bq_qa_ai npm start`, puis exécuter `output/browser-combat-run.js` avec Playwright CLI. Deux personnages vérifient poursuite, retour, agression autonome et déconnexion ; les fixtures sont limitées aux bases `bq_qa_`.
 
-Pour reproduire le parcours visuel isolé : `node scripts/prepare-social-qa.js`, puis dans un autre terminal `PORT=8086 MONGODB_DATABASE=bq_qa_social npm start`. Exécuter la fonction générée `output/browser-social-run.js` avec Playwright CLI `run-code`, puis `scripts/browser-mobile.js`. La préparation injecte seulement des personnages dans la base MongoDB `bq_qa_social` ; les identifiants des fixtures restent dans `output/`, ignoré par Git.
+Pour reproduire le parcours visuel isolé : `node scripts/prepare-social-qa.js`, puis dans un autre terminal `PORT=8086 MONGODB_DATABASE=bq_qa_social npm start`. Exécuter la fonction générée `output/browser-social-run.js` avec Playwright CLI `run-code`, puis `scripts/browser-mobile.js`. Pour vérifier la fondation (brouillon multijoueur, erreurs, double soumission et mobile), relancer la préparation puis exécuter `output/browser-guild-ui-run.js`. Chaque parcours requiert ses personnages neufs. La préparation injecte seulement des personnages dans la base MongoDB `bq_qa_social` ; les identifiants des fixtures restent dans `output/`, ignoré par Git.
 
 ## Documents
 

@@ -58,7 +58,7 @@ class Gameplay {
             }
         } catch (error) {
             if (!(error instanceof RuleError)) throw error;
-            this.social.event(player, 'notice', { error: true, message: error.message });
+            this.social.event(player, 'notice', { error: true, action, message: error.message });
         }
     }
 }

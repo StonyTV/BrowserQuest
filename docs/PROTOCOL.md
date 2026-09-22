@@ -56,7 +56,7 @@ Recharger le client web après mise à jour depuis le protocole 3. La connexion 
 
 ## Commandes sociales et bancaires
 
-`[31, action, payload]` reçoit soit PROFILE après mutation du personnage, soit un événement `[32, type, data]`. Une règle métier refusée donne `notice` avec `{error:true,message}`. L’enveloppe est limitée à 8 Kio comme les autres messages. Les identifiants de personnages des commandes sociales sont les UUID de PROFILE/social, pas les identifiants numériques de connexion.
+`[31, action, payload]` reçoit soit PROFILE après mutation du personnage, soit un événement `[32, type, data]`. Une règle métier refusée donne `notice` avec `{error:true,action,message}`. L’enveloppe est limitée à 8 Kio comme les autres messages. Les identifiants de personnages des commandes sociales sont les UUID de PROFILE/social, pas les identifiants numériques de connexion.
 
 | Action | Payload |
 |---|---|
@@ -75,7 +75,7 @@ Recharger le client web après mise à jour depuis le protocole 3. La connexion 
 
 La banque et la création de guilde exigent une ouverture de service et la proximité encore valide à chaque mutation. Banque : 72 objets, aucun objet porté déposable. Guilde : 25 or à la création, maximum 30 membres ; blason limité aux formes/symboles du catalogue, couleurs hexadécimales. Groupe : 5 membres, invitations 60 secondes, changement de chef au départ. Les constantes et PNJ sont dans `shared/content/social.json`.
 
-Événements : `social` contient les joueurs en ligne, le groupe, la guilde et les invitations du destinataire ; `service` ouvre un panneau PNJ ; `chat` porte `{id,channel,name,entityId,body,time}` ; `notice` porte `{message,error?}`. Aucun secret de session d’un autre joueur n’y figure. Les groupes sont temporaires ; guildes, blasons, rangs, banque et inventaire sont persistés.
+Événements : `social` contient les joueurs en ligne, le groupe, la guilde et les invitations du destinataire ; `service` ouvre un panneau PNJ ; `chat` porte `{id,channel,name,entityId,body,time}` ; `notice` porte `{message,error?,action?}`. Aucun secret de session d’un autre joueur n’y figure. Les groupes sont temporaires ; guildes, blasons, rangs, banque et inventaire sont persistés.
 
 `[33,idEntite,{name,hp,maxHp,guildTag,crest,services}]` complète les entités du monde. Les métadonnées peuvent précéder SPAWN ; le client les garde par identifiant. Dégâts et régénération réémettent les PV. L’appartenance de guilde est également affichable sous le nom.
 

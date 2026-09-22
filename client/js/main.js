@@ -356,6 +356,7 @@ define(['jquery', 'app'], function($, App) {
             });
             
             $(document).bind("keydown", function(e) {
+                if ($(e.target).closest('.rpg-panel, #rpg-hud, #rpg-chat').length) return;
                 if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.which === 13) return;
             	var key = e.which,
             	    $chat = $('#chatinput');

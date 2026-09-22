@@ -105,3 +105,84 @@
     .intro #parchment input { width:240px; height:38px; font-size:18px; box-sizing:border-box; }
     .game.death #parchment { display:block; }
 }
+
+/* A compact game dock: native pixel icons, keyboard keys and readable tooltips. */
+#rpg-hud { gap:6px; padding:7px; border-color:#a48a55; background:linear-gradient(#3d3a2e,#211f1b); box-shadow:inset 0 0 0 2px #141713,0 4px 0 #101510,0 8px 25px #0009; }
+#rpg-hud .hud-action { position:relative; display:grid; place-items:center; width:58px; height:58px; padding:0; border:2px solid #6e6b4f; background:linear-gradient(#3d4736,#242c23); box-shadow:inset 0 0 0 2px #192018,inset 0 4px #ffffff0b,0 2px #101510; }
+#rpg-hud .hud-action:hover, #rpg-hud .hud-action[aria-expanded=true] { border-color:#e3c583; background:linear-gradient(#576047,#343d2d); }
+#rpg-hud .hud-action:active { transform:translateY(1px); }
+#rpg-hud img, .rpg-panel img { image-rendering:pixelated; flex-shrink:0; }
+.hud-action kbd { position:absolute; right:3px; bottom:2px; min-width:12px; text-align:center; background:#151b13; border:1px solid #898162; color:#efdaa4; font:11px/14px GraphicPixel,monospace; box-shadow:0 1px #000; }
+.hud-tooltip { position:absolute; bottom:calc(100% + 12px); left:50%; transform:translateX(-50%); opacity:0; pointer-events:none; white-space:nowrap; background:#172018; border:1px solid #b19b63; box-shadow:0 2px 0 #101510; color:#f3dfae; padding:5px 10px; font:12px Verdana,sans-serif; }
+.hud-action:hover .hud-tooltip, .hud-action:focus-visible .hud-tooltip { opacity:1; }
+.hud-badge { position:absolute; top:-6px; right:-5px; min-width:17px; line-height:17px; border:2px solid #f0ca80; background:#8d3630; color:#fff2cc; font:bold 11px/17px Verdana,sans-serif; }
+.hud-badge[hidden] { display:none; }
+#sound-toggle[aria-pressed=true] img { opacity:.45; }
+#sound-toggle[aria-pressed=true]::after { content:''; position:absolute; width:36px; height:3px; background:#e7b3a0; border:1px solid #35211d; transform:rotate(-45deg); }
+.hud-purse { display:flex; align-items:center; gap:4px; padding:0 8px; }
+#gold-count { padding:0; min-width:20px; max-width:90px; overflow:hidden; text-overflow:ellipsis; font:17px GraphicPixel,Georgia,serif; }
+.rpg-panel .icon-close { flex-shrink:0; width:40px; height:40px; padding:3px; display:grid; place-items:center; background:#252b22; }
+.bank-vault .inventory-grid { grid-template-columns:repeat(8,minmax(0,1fr)); }
+.bank-summary { color:var(--rpg-gold); }
+.crest-editor { grid-template-columns:1fr; }
+.crest-controls { min-width:0; display:grid; gap:16px; }
+.crest-options { border:0; min-width:0; margin:0; padding:0; }
+.crest-options legend { margin-bottom:7px; padding:0; color:#cebd94; font:12px Verdana,sans-serif; }
+.crest-choice-list { display:flex; gap:8px; }
+.crest-choice { position:relative; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:0; padding:7px 3px; border:1px solid #536149; background:#1b261d; cursor:pointer; color:#b7c0a5; font:11px/1.4 Verdana,sans-serif; }
+.crest-choice input { position:absolute; opacity:0; width:1px; height:1px; padding:0; }
+.crest-choice:has(input:checked) { border-color:#e3c583; color:#ffe4a7; background:#444b31; box-shadow:inset 0 0 0 1px #8b7948; }
+.crest-choice:has(input:focus-visible) { outline:2px solid #f9d88f; outline-offset:3px; }
+.crest-choice:has(input:disabled) { cursor:wait; }
+.crest-choice:hover { border-color:#c3ab6c; }
+.crest-choice svg { display:block; }
+.crest-colors { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+#guild-create-dialog { inset:0; margin:auto; width:min(840px,calc(100vw - 48px)); height:fit-content; max-height:calc(100dvh - 48px); padding:26px; overscroll-behavior:contain; color:var(--rpg-text); border-color:#bba16c; background:linear-gradient(125deg,#354031,#202b23 60%); box-shadow:inset 0 0 0 4px #111b14,0 18px 80px #000b; }
+#guild-create-dialog::backdrop { background:#080f0bd1; }
+#guild-create-dialog header { margin-bottom:0; border-color:#6c6c47; padding-bottom:16px; }
+.guild-foundation-title { display:flex; align-items:center; gap:14px; }
+#guild-create-dialog h2 { font-size:32px; }
+#guild-create-intro { color:#c3c9af; margin:14px 0 22px; }
+.guild-foundation-layout { display:grid; grid-template-columns:240px minmax(0,1fr); gap:30px; }
+.guild-banner-preview { display:flex; flex-direction:column; align-items:center; text-align:center; padding:22px 16px; border:1px solid #5c684b; background:linear-gradient(#17261c,#2b3927); box-shadow:inset 0 0 0 3px #1a241a; }
+.guild-preview-caption { font:10px Verdana,sans-serif; letter-spacing:2px; color:#adba91; }
+#guild-create-preview { display:grid; place-items:center; flex:1; min-height:180px; width:100%; padding:18px 0; background:radial-gradient(ellipse,#76805740,transparent 70%); }
+#guild-create-preview svg { width:160px; height:160px; }
+#guild-preview-name { max-width:100%; overflow-wrap:anywhere; margin:8px 0; font-size:25px; }
+#guild-preview-tag { color:#d6bd7a; font:16px GraphicPixel,Georgia,serif; }
+.guild-banner-preview p { color:#91a080; margin-top:24px; font-size:11px; }
+.guild-identity-fields { display:grid; grid-template-columns:1fr 145px; gap:12px; margin-bottom:24px; }
+.guild-identity-fields input { width:100%; padding:11px 10px; }
+.guild-identity-fields small { font-size:10px; color:#93a287; }
+input[name=guildTag] { text-transform:uppercase; }
+#guild-create-dialog .guild-foundation-footer { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-top:24px; padding-top:18px; border-color:#626c49; }
+.guild-founding-price { display:flex; flex-direction:column; gap:2px; font-size:11px; }
+.guild-founding-price strong { display:flex; align-items:center; gap:6px; color:#f5d086; font:18px GraphicPixel,Georgia,serif; }
+.guild-foundation-actions { display:flex; gap:10px; }
+#guild-create-submit { min-width:170px; padding:12px 18px; background:linear-gradient(#a18b4e,#76602f); border-color:#e7ca7c; color:#fff1c4; font-weight:bold; box-shadow:inset 0 1px #f7df9d66,0 3px #141c13; }
+#guild-create-submit:disabled { background:#3d4734; border-color:#677253; color:#94a081; }
+#guild-create-feedback:empty { display:none; }
+.rpg-panel .form-error { color:#f2b79e; }
+#guild-create-feedback { padding:10px 12px; background:#4d3029; border-left:3px solid #d9966b; }
+@media(max-width:600px), (max-height:500px) {
+    #rpg-hud { right:8px; bottom:8px; padding:5px; gap:5px; }
+    #rpg-hud .hud-action { width:52px; height:52px; padding:0; }
+    .hud-purse { padding:0 5px; } #gold-count { font-size:15px; max-width:65px; }
+    #rpg-chat { bottom:82px; }
+    #guild-create-dialog { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); padding:18px; }
+    #guild-create-dialog h2 { font-size:25px; }
+    .guild-foundation-layout { grid-template-columns:1fr; gap:20px; }
+    .guild-banner-preview { display:grid; grid-template-columns:86px minmax(0,1fr); grid-template-rows:auto auto auto; column-gap:12px; padding:14px; text-align:left; }
+    .guild-preview-caption { grid-column:2; font-size:8px; }
+    #guild-create-preview { grid-column:1; grid-row:1/4; width:86px; min-height:0; padding:0; }
+    #guild-create-preview svg { width:86px; height:86px; }
+    #guild-preview-name { font-size:22px; } #guild-preview-tag { grid-column:2; }
+    .guild-banner-preview p { display:none; }
+    .guild-identity-fields { grid-template-columns:minmax(0,1fr) 110px; gap:10px; margin-bottom:20px; }
+    .guild-identity-fields input { font-size:16px; padding:9px 7px; }
+    #guild-create-dialog .guild-foundation-footer { flex-direction:column; align-items:stretch; gap:14px; }
+    .guild-foundation-actions { justify-content:flex-end; }
+    .bank-vault .inventory-grid { grid-template-columns:repeat(6,minmax(0,1fr)); }
+}
+@media(prefers-reduced-motion:reduce) { #rpg-hud .hud-action:active { transform:none; } }
+.social-tab-badge { display:inline-block; min-width:14px; padding:0 3px; margin-left:6px; border:1px solid #bda16a; color:#ffe5a8; background:#6a4330; font:bold 10px/16px Verdana,sans-serif; }

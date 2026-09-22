@@ -16,12 +16,13 @@ async (page) => {
     async function start(tab, token, name) {
         await tab.addInitScript(token => localStorage.setItem('bq-token', token), token);
         await tab.goto('http://127.0.0.1:8086/?qa=1');
-        await tab.waitForFunction(() => window.__bqGame && __bqGame.map.isLoaded);
+        await tab.waitForFunction(() => window.__bqGame?.map?.isLoaded);
         await tab.getByPlaceholder('Name your character').fill(name);
         await tab.getByPlaceholder('Name your character').press('Enter');
-        await tab.waitForFunction(() => __bqGame.started);
+        await tab.waitForFunction(() => __bqGame.profile);
     }
     async function meetNpc(tab, kind) {
+        await tab.waitForFunction(kind=>Object.values(__bqGame.entities).some(e=>e.kind===kind),kind);
         // Pathfind through the normal movement/combat client, then click the actual NPC sprite.
         await tab.evaluate(kind => {
             const npc = Object.values(__bqGame.entities).find(entity => entity.kind === kind && (kind !== 40 || entity.gridX === 18));
@@ -39,7 +40,7 @@ async (page) => {
             return {x:(npc.x+8-g.camera.x)*g.renderer.scale,y:(npc.y+8-g.camera.y)*g.renderer.scale};
         }, kind);
         await tab.mouse.click(pos.x,pos.y);
-        await tab.locator('#social-panel').waitFor({state:'visible',timeout:5000});
+        await tab.locator(kind === 43 ? '#guild-create-dialog' : '#bank-panel').waitFor({state:'visible',timeout:5000});
     }
     try {
         await start(hero, fixture.leader, 'ChefQA');
@@ -55,10 +56,10 @@ async (page) => {
         await meetNpc(hero,43);
         await hero.getByLabel('Nom de la guilde').fill('Veilleurs QA');
         await hero.getByLabel('Sigle · 2 à 5 lettres').fill('VQA');
-        await hero.getByLabel('Cadre',{exact:true}).selectOption('banner');
-        await hero.getByLabel('Emblème',{exact:true}).selectOption('stag');
+        await hero.getByRole('radio',{name:'Bannière',exact:true}).check();
+        await hero.getByRole('radio',{name:'Cerf',exact:true}).check();
         await hero.screenshot({path:'output/playwright/v2-guild-creation.png',scale:'css'});
-        await hero.getByRole('button',{name:'Fonder · 25 or'}).click();
+        await hero.getByRole('button',{name:'Fonder la guilde'}).click();
         await hero.getByRole('heading',{name:'Veilleurs QA'}).waitFor();
         await hero.getByRole('button',{name:'Joueurs',exact:true}).click();
         const row = hero.locator('.social-row').filter({hasText:'AmiQA'});
@@ -68,6 +69,7 @@ async (page) => {
         await friend.getByRole('button',{name:'Guilde',exact:true}).click();
         await friend.getByRole('heading',{name:'Veilleurs QA'}).waitFor();
         await row.getByRole('button',{name:'Grouper',exact:true}).click();
+        await friend.getByRole('button',{name:'Groupe',exact:true}).click();
         await friend.getByRole('button',{name:'Accepter',exact:true}).click();
         await hero.waitForFunction(() => document.querySelectorAll('#party-hud .party-member').length === 2);
         await friend.getByLabel('Canal de discussion').selectOption('guild');
@@ -86,7 +88,7 @@ async (page) => {
         await hero.screenshot({path:'output/playwright/v2-bank.png',scale:'css'});
         await hero.locator('[aria-label="Cases du coffre"] [data-item-id]').click();
         await hero.waitForFunction(() => __bqGame.profile.bank.items.length === 0);
-        await hero.getByRole('button',{name:'Fermer les compagnons'}).click();
+        await hero.getByRole('button',{name:'Fermer la banque'}).click();
         await hero.getByRole('button',{name:'Sac · I',exact:true}).click();
         await hero.locator('#inventory-items [data-item-id]').filter({has:hero.locator('.inventory-icon[style*=sword2]')}).click();
         await hero.getByRole('button',{name:'Équiper',exact:true}).click();

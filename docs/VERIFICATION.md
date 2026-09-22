@@ -95,3 +95,22 @@ Le test WebSocket de combat confirme qu’un ancien AGGRO envoyé à un rat est 
 Le parcours social complet a été rejoué : sac, déplacement de case, création de guilde/blason, invitation, groupe, chat de guilde, dépôt/retrait bancaire, équipement et victoire par clic. Le parcours tactile émulé 390 × 844 vérifie à nouveau sac, case vide, déplacement et arrivée serveur, sans débordement horizontal ni `pageerror`.
 
 Ces preuves portent sur des groupes de quelques joueurs, pas une charge de 200 connexions. Les routes des créatures sont bornées à leur territoire et elles ne franchissent pas les portes. Elles peuvent se croiser pendant la marche ; l’espacement concerne leurs positions de mêlée. Aucun client Unity ou téléphone physique n’a été validé. Progression/classes, métiers/craft et percepteurs restent ouverts dans le goal V2.
+
+
+## Interface et concurrence V2 — 0.3.0-alpha.5
+
+`npm run test:mongo` : **37 tests réussis**. Deux nouveaux parcours utilisent de vrais clients WebSocket : deux personnages ramassent simultanément le même objet, puis se reconnectent pour constater une seule copie persistée ; deux fondateurs demandent simultanément le même nom/sigle, puis rejouent leurs demandes. Une seule guilde est créée, le gagnant conserve 75 or et le perdant 100. L’erreur métier contient désormais l’action refusée pour son affichage dans le formulaire concerné.
+
+Le parcours social à deux contextes Chromium a été rejoué : sac et cases vides, déplacement d’objet, création, invitations de guilde et de groupe, chat privé, banque dédiée, équipement et victoire. Les onglets affichent les invitations de leur catégorie et signalent leur nombre.
+
+`scripts/browser-guild-ui.js` vérifie la fondation centrée sans onglets, la boucle clavier dans le formulaire, l’annulation sans paiement et l’absence de mouvement derrière le fond modal. L’arrivée d’un second joueur et son invitation de groupe n’effacent plus le nom, le sigle, les couleurs ni les choix de blason. Deux soumissions synchrones produisent une seule commande. Un nom déjà pris affiche une erreur sur place, conserve les champs et les 100 or ; le joueur corrige puis fonde sa guilde. Un personnage sans or ne peut pas soumettre.
+
+Le même parcours ouvre et personnalise la fondation en Chromium tactile 390 × 844, réduit la hauteur disponible à 500 px, défile jusqu’aux actions et annule par toucher sans débordement horizontal. Une fermeture réelle du WebSocket ferme le dialogue et rend accessible la reconnexion. Ces essais ne constituent pas une preuve de clavier virtuel ou de téléphone physique.
+
+Le parcours de combat à deux navigateurs a aussi été rejoué : sept pas de poursuite observés pour le rat, retour, agression autonome d’un gobelin et nettoyage de la cible à la déconnexion ; aucun ancien paquet AGGRO/HURT ni erreur JavaScript.
+
+Les raccourcis I/G, Échap, l’activation d’un bouton HUD par Espace et la coupure/réactivation du son sont vérifiés. Le parcours tactile du sac a été rejoué (case vide, déplacement d’objet et déplacement réel du personnage), sans débordement ni erreur JavaScript.
+
+Six sprites du HUD contrôlés : RGBA 32 × 32, alpha 0/255 et huit couleurs opaques au maximum. Captures inspectées : `v2-hud-desktop.png`, `v2-hud-mobile.png`, `v2-guild-draft-retained.png`, `v2-guild-mobile.png`, `v2-guild-small-height.png`. Sources et captures restent dans `output/` ; seules les icônes finales sont livrées.
+
+Toutes les fixtures navigateur utilisent `bq_qa_ui`, distincte du personnage jouable. Aucun test de charge ou de session prolongée n’a été réalisé ; les limites générales restent applicables.

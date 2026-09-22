@@ -1,4 +1,4 @@
-> Cet état des lieux correspond au jalon 0.2. La branche `codex/mmorpg-v2` a depuis ajouté inventaire en grille, banque, groupes, guildes, chat multicanal, MongoDB, déplacements des joueurs et IA des monstres contrôlés par le serveur. Le suivi actuel est dans [V2.md](V2.md) ; progression, métiers/craft, percepteurs et identité récupérable restent à traiter.
+> Cet état des lieux correspond au jalon 0.2. La branche `codex/mmorpg-v2` a depuis ajouté inventaire en grille, banque, groupes, guildes, chat multicanal, MongoDB, déplacements des joueurs et IA des monstres contrôlés par le serveur. Le suivi actuel est dans [V2.md](V2.md) ; progression et identité récupérable ont également été ajoutées ; métiers/craft et percepteurs restent à traiter.
 
 # État des lieux et direction
 

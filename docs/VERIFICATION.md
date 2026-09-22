@@ -127,3 +127,19 @@ Un test MongoDB provoque un conflit sur le deuxième bénéficiaire : l’écrit
 Le parcours social complet à deux navigateurs et le parcours mobile tactile du sac/déplacement ont été rejoués sur cette version, sans erreur JavaScript ni débordement.
 
 Les fixtures utilisent `bq_qa_progression`. Ces vérifications prouvent le fonctionnement de la progression, pas l’équilibrage de toute la courbe : aucune session complète du niveau 1 au niveau 20 n’a été jouée, ni campagne de charge. Classes, métiers/craft et percepteurs restent ouverts.
+
+## 0.3 alpha 7 — comptes Supabase et sélection (22 septembre 2026)
+
+**Validation finale : `BQ_TEST_AUTH=1 BQ_TEST_MONGO=1 npm test` — 53 tests réussis, aucun échec ni test ignoré.**
+
+La connexion est obligatoire ; le test historique à clé locale n’est accessible que par `NODE_ENV=test BQ_TEST_LEGACY_AUTH=1` sur loopback. Les tests de compte démarrent le serveur normal, sans ce contournement, avec les vrais services GoTrue/PostgreSQL/Mailpit/MongoDB.
+
+`npm run test:auth` : **8 scénarios et leur suite parent réussis**. Inscription non confirmée refusée, validation par code e-mail, cookie HttpOnly/SameSite, HTTP/WebSocket anonyme refusé, origine hostile refusée, UUID d’un autre compte inaccessible, noms uniques, limite de trois places même en concurrence, deux comptes en jeu avec chat, double connexion refusée. Une écriture d’inventaire sur profil possédé persiste ; le refresh simultané de huit requêtes tourne une seule session ; un redémarrage conserve identité et personnage. Rattachement d’un ancien profil conserve possessions/or et invalide son ancienne clé. Logout refuse immédiatement cookie copié et ancien Bearer ; récupération de mot de passe invalide les autres sessions et conserve les trois personnages. Bearer natif valide accepté et jeton forgé refusé, sans prétendre tester un SDK natif.
+
+`scripts/browser-accounts.js` : parcours réel Chromium desktop 1440×900 et tactile 390×844, inscription, code Mailpit, sélection des trois cases, rechargement, jeu simultané, chat entre comptes, déplacement d’un objet au toucher, changement de personnage avec retour de cet objet dans la case 24, déconnexion et récupération du mot de passe. `node scripts/prepare-account-qa.js` produit la variante `output/browser-accounts-run.js` : rattachement explicite du profil ancien, UUID conservé, 77 pièces et 45 XP, suppression de l’ancienne clé locale. Une deuxième page du même compte reçoit un message utilisable et un bouton de retour. **Aucune erreur `pageerror` dans le parcours final.**
+
+Le passage du formulaire tactile de 844 à 500 px de haut a révélé un accès aux sprites avant chargement et un débordement de l’ancien parchemin. Correction ciblée de `renderer.rescale`, test de régression, puis même reproduction : largeur document 390 px pour fenêtre 390 px, aucune erreur. Le formulaire défile jusqu’à sa validation. Cela ne constitue pas une preuve sur clavier virtuel/appareil physique.
+
+Deux tests ciblés vérifient également l’isolation du cache local par UUID personnage et le redimensionnement avant chargement des sprites. Le démarrage Docker sur volume PostgreSQL neuf a été vérifié dans une pile temporaire distincte, ensuite supprimée. Le personnage réel Jerome reste non rattaché : 5 objets, 9 pièces, 4 victoires ; aucun compte QA n’en devient propriétaire. Un export MongoDB privé précède la bascule.
+
+Google/Apple : câblage PKCE présent, mais **fournisseurs non activés et aller-retour externe non testé**, faute d’identifiants officiels. HTTPS public, livraison SMTP externe, restauration PostgreSQL complète, Steam et charge MMO restent hors des preuves de ce jalon. Voir [ACCOUNTS.md](ACCOUNTS.md).

@@ -17,7 +17,7 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
             this.setAttribute('aria-label', game.audioManager.enabled ? 'Couper les effets sonores' : 'Activer les effets sonores');
         };
         function open(name) {
-            if (creation.isOpen()) return;
+            if (document.querySelector('dialog[open]')) return;
             ['inventory', 'social', 'bank'].forEach(function(id) {
                 document.getElementById(id + '-panel').hidden = id !== name;
                 var button = document.getElementById(id + '-toggle');
@@ -30,7 +30,7 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
         document.getElementById('social-close').onclick = function() { open(null); };
         document.getElementById('bank-close').onclick = function() { open(null); };
         document.addEventListener('keydown', function(event) {
-            if (creation.isOpen()) return;
+            if (document.querySelector('dialog[open]')) return;
             if (event.key === 'Escape') { open(null); return; }
             if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || !game.started) return;
             if (event.key.toLowerCase() === 'i') { toggle.click(); event.preventDefault(); }
@@ -82,10 +82,11 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
         game.onProfile = function(next) {
             profile = next;
             game.profile = next;
-            localStorage.setItem('bq-token', profile.token);
+            if (profile.token) localStorage.setItem('bq-token', profile.token);
             document.getElementById('rpg-hud').hidden = false;
             document.getElementById('rpg-chat').hidden = false;
             document.body.classList.add('rpg-playing');
+            if (game.accountReady) game.accountReady();
             render();
             var weapon = profile.items.find(function(item) { return item.id === profile.equipped.weapon; });
             var armor = profile.items.find(function(item) { return item.id === profile.equipped.armor; });

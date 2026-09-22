@@ -29,16 +29,21 @@ class MongoProfileStore {
         if (token) {
             if (!/^[a-f0-9]{64}$/.test(token)) return null;
             const row = await this.db.collection('profiles').findOne({ _id: this.hash(token) });
-            return row ? { token, revision: row.revision, profile: normalizeProfile(row.state) } : null;
+            return row && !row.ownerId ? { token, revision: row.revision, profile: normalizeProfile(row.state) } : null;
         }
         const session = { token: randomBytes(32).toString('hex'), revision: 0, profile: createProfile(name) };
         await this.db.collection('profiles').insertOne({ _id: this.hash(session.token), revision: 0, state: session.profile });
         return session;
     }
+    async openOwned(ownerId, id) {
+        if (typeof id !== 'string' || id.length > 64) return null;
+        const row = await this.db.collection('profiles').findOne({ ownerId, 'state.id': id });
+        return row ? { key: row._id, revision: row.revision, profile: normalizeProfile(row.state) } : null;
+    }
     async writeProfile(character, session) {
         normalizeProfile(character.profile);
         const result = await this.db.collection('profiles').updateOne(
-            { _id: this.hash(character.token), revision: character.revision },
+            { _id: character.key || this.hash(character.token), revision: character.revision },
             { $set: { state: character.profile }, $inc: { revision: 1 } }, { session });
         if (result.matchedCount !== 1) throw new Error('Character changed in another writer; refusing a stale save');
     }

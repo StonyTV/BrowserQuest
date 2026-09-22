@@ -3,13 +3,24 @@ define(function() {
 
     var Storage = Class.extend({
         init: function() {
-            if(this.hasLocalStorage() && localStorage.data) {
-                this.data = JSON.parse(localStorage.data);
-            } else {
-                this.resetData();
-            }
+            this.key = 'data';
+            this.load();
         },
-    
+
+        selectCharacter: function(id) {
+            this.key = 'bq-character:' + id;
+            this.load();
+        },
+
+        load: function() {
+            this.resetData();
+            if (!this.hasLocalStorage()) return;
+            try {
+                var saved = JSON.parse(localStorage.getItem(this.key));
+                if (saved && saved.player && Array.isArray(saved.achievements?.unlocked)) this.data = saved;
+            } catch { /* An invalid local cache cannot prevent account login. */ }
+        },
+
         resetData: function() {
             this.data = {
                 hasAlreadyPlayed: false,
@@ -36,13 +47,13 @@ define(function() {
     
         save: function() {
             if(this.hasLocalStorage()) {
-                localStorage.data = JSON.stringify(this.data);
+                localStorage.setItem(this.key, JSON.stringify(this.data));
             }
         },
     
         clear: function() {
             if(this.hasLocalStorage()) {
-                localStorage.data = "";
+                localStorage.removeItem(this.key);
                 localStorage.removeItem("bq-token");
                 this.resetData();
             }

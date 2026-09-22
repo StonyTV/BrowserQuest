@@ -1,31 +1,35 @@
-# Protocole 5 du prototype
+# Protocole 6 du prototype
 
-Transport : WebSocket texte JSON, à la même origine que le client. `/status` indique `protocol: 5`. Aucun cookie ou format spécifique à JavaScript n'est nécessaire ; un client Unity peut envoyer les mêmes messages JSON. La compatibilité Unity n'a pas été implémentée ni testée.
+Transport : WebSocket texte JSON. `/status` indique `protocol: 6`. L’upgrade exige soit le cookie HttpOnly du navigateur de même origine, soit `Authorization: Bearer <access_token Supabase>` pour un client natif. La vérification d’identité est commune au HTTP et au WebSocket. Les SDK Unity/Steam/mobile ne sont pas encore intégrés.
 
-Le serveur envoie d'abord le texte `go`. Le client répond :
+Après l’authentification HTTP et `GET /api/characters`, le serveur envoie `go`. Le client sélectionne un personnage possédé :
 
 ```json
-[0, "Nom", 21, 60, ""]
+[0, "Nom indicatif", 21, 60, "uuid-personnage"]
 ```
 
-Les deux identifiants d'équipement sont conservés pour l'adaptateur historique mais **ignorés par le serveur**. La chaîne finale vide crée un personnage ; à la reconnexion elle contient la clé secrète reçue dans PROFILE. Le serveur émet WELCOME (`[1,id,nom,x,y,pv]`), puis PROFILE. Un nom identique ne donne jamais accès à un personnage existant. Une clé inconnue et une seconde connexion au même personnage sont refusées.
+Le nom et les identifiants d’équipement sont ignorés au profit du profil serveur. Un UUID appartenant à un autre compte est refusé. Un seul personnage peut être actif par compte, tous les mondes de ce processus confondus. WELCOME puis PROFILE démarrent le jeu ; aucun secret de compte ou de personnage n’est envoyé dans PROFILE. La création se fait par `POST /api/characters`, jamais par HELLO.
+
+La reconnexion réseau nécessite une session valide. Le WebSocket vérifie de nouveau l’identité toutes les 30 secondes. Déconnexion explicite et changement de mot de passe ferment immédiatement les connexions concernées. Voir [ACCOUNTS.md](ACCOUNTS.md).
+
+Le format HELLO historique à clé locale reste limité à `NODE_ENV=test BQ_TEST_LEGACY_AUTH=1` sur loopback. Un profil déjà rattaché à un compte ne s’ouvre plus par cette clé, même dans ce mode.
 
 Les messages sortants sont soit un tableau d'action, soit un tableau de tableaux (batch). Les identifiants d'entités sont numériques. Les identifiants d'objets d'inventaire sont des UUID, différents de l'objet temporaire au sol.
 
 | Identifiant | Sens | Contenu |
 |---|---|---|
-| 27 PROFILE | serveur → client | `[27,{token,id,schemaVersion,name,guildId,bank,gold,kills,capacity,hitPoints,maxHitPoints,items,equipped}]` |
+| 27 PROFILE | serveur → client | `[27,{id,schemaVersion,name,guildId,bank,gold,kills,capacity,hitPoints,maxHitPoints,items,equipped}]` |
 | 28 INVENTORY_EQUIP | client → serveur | `[28,"uuid-objet"]` |
 | 29 INVENTORY_DISCARD | client → serveur | `[29,"uuid-objet"]`, refus si équipé |
 | 30 LOOT_RESULT | serveur → client | `[30,idObjetAuSol,succès,message]` |
 
-`items` contient `{id,kind,rarity,bonus,slot}`. `slot` est une case fixe de 0 à 23 ; les objets déposés dans `bank.items` n’ont pas de case du sac. `bank` contient aussi le solde `gold`. `equipped` contient `{weapon:uuid,armor:uuid}`. Une mutation valide renvoie PROFILE complet. Le serveur tire les raretés, calcule les bonus, contrôle la propriété et persiste l'état. Ne jamais exposer le champ `token` aux autres joueurs ni dans des logs.
+`items` contient `{id,kind,rarity,bonus,slot}`. `slot` est une case fixe de 0 à 23 ; les objets déposés dans `bank.items` n’ont pas de case du sac. `bank` contient aussi le solde `gold`. `equipped` contient `{weapon:uuid,armor:uuid}`. Une mutation valide renvoie PROFILE complet. Le serveur tire les raretés, calcule les bonus, contrôle la propriété et persiste l'état. Le mode de test historique seul expose une clé de personnage `token` ; ne jamais la journaliser.
 
 Les messages originaux 0–26 sont définis dans `shared/js/gametypes.js`, leur validation entrante dans `server/js/format.js` et leur sérialisation sortante dans `server/js/message.js`. AGGRO (6) et HURT (9) sont ignorés : les monstres infligent désormais leurs dégâts via la boucle serveur. HIT (8) vérifie cible de type créature, contact orthogonal (ou même case), créature hors retour au point de départ et délai minimum de 600 ms. Le client web attaque normalement toutes les 800 ms.
 
 Limites : message entrant 8 Kio, 100 messages/seconde/connexion, chaînes de 256 caractères maximum, WHO de 511 identifiants maximum. Ping/pong toutes les 30 secondes. Le navigateur doit présenter la même origine ; les clients natifs peuvent omettre Origin. L'origine n'est pas un mécanisme d'authentification.
 
-Avant un client alternatif distribué publiquement, prévoir une négociation de version explicite, des erreurs typées et des snapshots globaux avec tick. Le protocole 5 contrôle les routes des joueurs et les décisions des monstres. Aucune garantie anti-triche complète n’est établie.
+Avant un client alternatif distribué publiquement, prévoir une négociation de version explicite, des erreurs typées et des snapshots globaux avec tick. Les règles du protocole 5 restent valides et contrôlent les routes des joueurs et les décisions des monstres. Aucune garantie anti-triche complète n’est établie.
 
 ## Créatures autoritaires
 

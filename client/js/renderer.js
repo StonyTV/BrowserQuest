@@ -69,7 +69,7 @@ function(Camera, Item, Character, Player) {
             if(!this.upscaledRendering && this.game.map && this.game.map.tilesets) {
                 this.setTileset(this.game.map.tilesets[this.scale - 1]);
             }
-            if(this.game.renderer) {
+            if(this.game.spritesets) {
                 this.game.setSpriteScale(this.scale);
             }
         },

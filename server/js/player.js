@@ -57,12 +57,17 @@ module.exports = Player = Character.extend({
                 
                 self.kind = Types.Entities.WARRIOR;
                 if (!self.session) {
-                    self.session = await self.server.profiles.open(message[4], self.name);
+                    if (self.connection.auth && [...self.server.profiles.sessions.values()].some(player => player.connection.auth?.accountId === self.connection.auth.accountId)) {
+                        return self.connection.close("Account already playing in another window");
+                    }
+                    self.session = self.connection.auth
+                        ? await self.server.profiles.openOwned(self.connection.auth.accountId, message[4])
+                        : await self.server.profiles.open(message[4], self.name);
                     if (!self.session) return self.connection.close("Unknown character; create a new character");
-                    if (self.server.profiles.sessions.has(self.session.token)) {
+                    if (self.server.profiles.sessions.has(self.session.profile.id)) {
                         return self.connection.close("Character already connected in another window");
                     }
-                    self.server.profiles.sessions.set(self.session.token, self);
+                    self.server.profiles.sessions.set(self.session.profile.id, self);
                 }
                 self.name = self.session.profile.name;
                 self.applyEquipment();
@@ -218,8 +223,8 @@ module.exports = Player = Character.extend({
                 clearTimeout(self.firepotionTimeout);
             }
             clearTimeout(self.disconnectTimeout);
-            if (self.session && self.server.profiles.sessions.get(self.session.token) === self) {
-                self.server.profiles.sessions.delete(self.session.token);
+            if (self.session && self.server.profiles.sessions.get(self.session.profile.id) === self) {
+                self.server.profiles.sessions.delete(self.session.profile.id);
             }
             if(self.exit_callback) {
                 self.exit_callback();

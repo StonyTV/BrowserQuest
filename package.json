@@ -1,6 +1,6 @@
 {
   "name": "browserquest-revival",
-  "version": "0.3.0-alpha.6",
+  "version": "0.3.0-alpha.7",
   "private": true,
   "description": "A web-first RPG prototype based on Mozilla BrowserQuest",
   "scripts": {
@@ -11,7 +11,10 @@
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:migrate": "node scripts/migrate-mongo.js",
-    "test:mongo": "BQ_TEST_MONGO=1 node --test tests/*.test.js"
+    "test:mongo": "BQ_TEST_MONGO=1 node --test tests/*.test.js",
+    "auth:init": "node scripts/auth-init.js",
+    "auth:up": "docker compose --env-file data/auth.env -f compose.yaml -f compose.auth.yaml up -d --wait",
+    "test:auth": "BQ_TEST_AUTH=1 node --test tests/auth.test.js"
   },
   "engines": {
     "node": ">=22.13"

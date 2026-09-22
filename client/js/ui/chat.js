@@ -15,6 +15,7 @@ define(['ui/dom', 'text!../../../shared/content/social.json'], function(dom, con
         };
         document.getElementById('chat-toggle').onclick = function() { root.classList.toggle('collapsed'); };
         document.addEventListener('keydown', function(event) {
+            if (document.querySelector('dialog[open]')) return;
             if (event.key === 'Enter' && game.started && !/INPUT|TEXTAREA|SELECT|BUTTON/.test(event.target.tagName)) {
                 root.classList.remove('collapsed'); input.focus(); event.preventDefault();
             }

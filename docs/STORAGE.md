@@ -63,9 +63,15 @@ Ces commandes ne mettent aucun secret navigateur en clair dans le terminal ; les
 npm test              # régression SQLite, pas de Docker requis
 npm run test:mongo    # MongoDB réel ; bases bq_test_* temporaires
 node scripts/prepare-social-qa.js
-PORT=8086 MONGODB_DATABASE=bq_qa_social npm start
+NODE_ENV=test BQ_TEST_LEGACY_AUTH=1 PORT=8086 MONGODB_DATABASE=bq_qa_social npm start
 ```
 
 Les 18 tests MongoDB vérifient notamment le rollback d’une création de guilde, le refus d’une écriture périmée, la migration et son second passage, des dépôts successifs concurrents, la restauration après redémarrage du processus et l’arrêt sans confirmation après conflit de stockage. Les parcours `scripts/browser-social.js` et `scripts/browser-mobile.js` vérifient les écrans réels ; la préparation écrit les clés des personnages de test dans `output/`, ignoré par Git.
 
 Référence de mise en œuvre : [transactions du pilote Node MongoDB](https://www.mongodb.com/docs/drivers/node/current/crud/transactions/). Les opérations d’une transaction sont attendues séquentiellement.
+
+## Identité depuis alpha.7
+
+Les profils rattachés possèdent `ownerId` (UUID Supabase), `accountSlot` et `nameKey`. Deux index uniques garantissent les trois emplacements et les noms distincts. Les profils anciens restent récupérables sans écraser `state`, avec incrément de révision. Les écritures du jeu utilisent la clé interne du document ; elles ne nécessitent plus de secret fourni par le navigateur.
+
+`auth_sessions` conserve uniquement le hash du cookie, l’UUID du compte et des jetons Supabase chiffrés AES-256-GCM ; un index TTL expire les sessions. L’identité/mot de passe vit dans le PostgreSQL Auth dédié, volume `browserquest_auth-data`. Une sauvegarde complète doit préserver **MongoDB, PostgreSQL et les secrets** ; voir [ACCOUNTS.md](ACCOUNTS.md). Ne pas revenir à un serveur pré-alpha.7 après avoir rattaché des personnages : il ne comprend pas les règles d’appartenance.

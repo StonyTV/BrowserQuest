@@ -167,7 +167,7 @@ define(['jquery', 'app'], function($, App) {
     };
     
     var initGame = function() {
-        require(['game', 'inventory'], function(Game, initInventory) {
+        require(['game', 'inventory', 'ui/account'], function(Game, initInventory, initAccount) {
             
             var canvas = document.getElementById("entities"),
         	    background = document.getElementById("background"),
@@ -179,6 +179,7 @@ define(['jquery', 'app'], function($, App) {
     		game.setStorage(app.storage);
     		app.setGame(game);
             initInventory(game);
+            initAccount(app, game);
             if (new URLSearchParams(location.search).has('qa')) window.__bqGame = game;
     		
     		if(app.isDesktop && app.supportsWorkers) {
@@ -356,7 +357,7 @@ define(['jquery', 'app'], function($, App) {
             });
             
             $(document).bind("keydown", function(e) {
-                if ($(e.target).closest('.rpg-panel, #rpg-hud, #rpg-chat').length) return;
+                if (!game.started || document.querySelector('dialog[open]') || $(e.target).closest('.rpg-panel, #rpg-hud, #rpg-chat').length) return;
                 if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.which === 13) return;
             	var key = e.which,
             	    $chat = $('#chatinput');

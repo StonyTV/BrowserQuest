@@ -51,7 +51,7 @@ class Connection {
 }
 
 class GameServer {
-    constructor(port, host, onFailure) {
+    constructor(port, host, onFailure, { auth, routes, testLegacy = false } = {}) {
         this._connections = {};
         this.commands = new CommandQueue(onFailure);
         this.counter = 500000;
@@ -61,6 +61,15 @@ class GameServer {
             try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
             catch { res.writeHead(400).end(); return; }
             if (pathname.includes('\0')) { res.writeHead(400).end(); return; }
+            if (pathname.startsWith('/api/')) {
+                if (testLegacy && pathname === '/api/auth/session') {
+                    res.setHeader('Content-Type', 'application/json');
+                    res.setHeader('Cache-Control', 'no-store');
+                    res.end(JSON.stringify({ testLegacy: true }));
+                } else if (routes) void routes.handle(req, res, pathname, this);
+                else res.writeHead(503).end();
+                return;
+            }
             if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405).end(); return; }
             if (pathname === '/status') {
                 res.setHeader('Content-Type', 'application/json');
@@ -83,13 +92,24 @@ class GameServer {
             });
         });
         this.wss = new WebSocketServer({ server: this._httpServer, maxPayload: 8192, perMessageDeflate: false,
-            verifyClient: ({ origin, req }) => !origin || origin === 'http://' + req.headers.host || origin === 'https://' + req.headers.host
+            verifyClient: ({ origin, req }, done) => {
+                const expected = require('./auth/routes').originFor(req);
+                if (origin && origin !== expected) return done(false, 403);
+                if (testLegacy) return done(true);
+                if (!auth) return done(false, 503);
+                auth.authenticate(req).then(principal => {
+                    req.principal = principal;
+                    done(Boolean(principal), 401);
+                }).catch(() => done(false, 503));
+            }
         });
         this.wss.on('error', error => this.commands.run(() => { throw error; }).catch(() => {}));
-        this.wss.on('connection', socket => {
+        this.wss.on('connection', (socket, req) => {
             if (this.stopping) { socket.close(1013, 'Server stopping'); return; }
             if (Object.keys(this._connections).length >= 250) { socket.close(1013, 'Server full'); return; }
             const connection = new Connection(++this.counter, socket, this);
+            connection.auth = req.principal;
+            connection.authRequest = req;
             this._connections[connection.id] = connection;
             if (this.connection_callback) this.connection_callback(connection);
         });
@@ -97,6 +117,10 @@ class GameServer {
             if (!connection.alive) return connection.socket.terminate();
             connection.alive = false;
             connection.socket.ping();
+            if (auth) auth.authenticate(connection.authRequest).then(principal => {
+                if (!principal) connection.close('Session expired');
+                else connection.auth = principal;
+            }).catch(() => connection.close('Authentication unavailable'));
         }), 30000);
         this.heartbeat.unref();
         this._httpServer.listen(port, host, () => console.log('BrowserQuest: http://' + host + ':' + this._httpServer.address().port));

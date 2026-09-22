@@ -20,7 +20,7 @@ async function openStore() {
 }
 const peers = [];
 async function startServer() {
-    child = spawn(process.execPath, ['server/js/main.js'], { env: { ...process.env, PORT: '0', BQ_DATABASE: mongo ? '' : path.join(directory, 'characters.sqlite'), MONGODB_DATABASE: database } });
+    child = spawn(process.execPath, ['server/js/main.js'], { env: { ...process.env, PORT: '0', NODE_ENV: 'test', BQ_TEST_LEGACY_AUTH: '1', BQ_DATABASE: mongo ? '' : path.join(directory, 'characters.sqlite'), MONGODB_DATABASE: database } });
     let output = '';
     base = await new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(output)), 15000);
@@ -109,7 +109,7 @@ async function moveTo(peer,x,y,radius=0) {
     assert.deepEqual(peer.position,path.at(-1));
 }
 test('HTTP serves game and shared protocol, never server files', async () => {
-    assert.equal((await (await fetch(base + '/status')).json()).protocol, 5);
+    assert.equal((await (await fetch(base + '/status')).json()).protocol, 6);
     assert.equal((await fetch(base)).status, 200);
     assert.equal((await fetch(base + '/shared/js/gametypes.js')).status, 200);
     assert.equal((await fetch(base + '/server/config.json')).status, 404);

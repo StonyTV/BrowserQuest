@@ -145,7 +145,7 @@ define(['jquery', 'app'], function($, App) {
     		}
     		
     		$('.play div').click(function(event) {
-                var nameFromInput = $('#nameinput').attr('value'),
+                var nameFromInput = $('#nameinput').val(),
                     nameFromStorage = $('#playername').html(),
                     name = nameFromInput || nameFromStorage;
                 
@@ -165,7 +165,7 @@ define(['jquery', 'app'], function($, App) {
     };
     
     var initGame = function() {
-        require(['game'], function(Game) {
+        require(['game', 'inventory'], function(Game, initInventory) {
             
             var canvas = document.getElementById("entities"),
         	    background = document.getElementById("background"),
@@ -176,6 +176,8 @@ define(['jquery', 'app'], function($, App) {
     		game.setup('#bubbles', canvas, background, foreground, input);
     		game.setStorage(app.storage);
     		app.setGame(game);
+            initInventory(game);
+            if (new URLSearchParams(location.search).has('qa')) window.__bqGame = game;
     		
     		if(app.isDesktop && app.supportsWorkers) {
     		    game.loadMap();
@@ -241,8 +243,8 @@ define(['jquery', 'app'], function($, App) {
 	
             app.initHealthBar();
 	
-            $('#nameinput').attr('value', '');
-    		$('#chatbox').attr('value', '');
+            $('#nameinput').val('');
+            $('#chatbox').val('');
     		
         	if(game.renderer.mobile || game.renderer.tablet) {
                 $('#foreground').bind('touchstart', function(event) {
@@ -321,11 +323,11 @@ define(['jquery', 'app'], function($, App) {
                     $chat = $('#chatinput');
 
                 if(key === 13) {
-                    if($chat.attr('value') !== '') {
+                    if($chat.val() !== '') {
                         if(game.player) {
-                            game.say($chat.attr('value'));
+                            game.say($chat.val());
                         }
-                        $chat.attr('value', '');
+                        $chat.val('');
                         app.hideChat();
                         $('#foreground').focus();
                         return false;
@@ -343,7 +345,7 @@ define(['jquery', 'app'], function($, App) {
 
             $('#nameinput').keypress(function(event) {
                 var $name = $('#nameinput'),
-                    name = $name.attr('value');
+                    name = $name.val();
 
                 if(event.keyCode === 13) {
                     if(name !== '') {
@@ -365,7 +367,7 @@ define(['jquery', 'app'], function($, App) {
             	var key = e.which,
             	    $chat = $('#chatinput');
 
-                if($('#chatinput:focus').size() == 0 && $('#nameinput:focus').size() == 0) {
+                if($('#chatinput:focus').length == 0 && $('#nameinput:focus').length == 0) {
                     if(key === 13) { // Enter
                         if(game.ready) {
                             $chat.focus();

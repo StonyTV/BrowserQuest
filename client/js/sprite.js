@@ -50,6 +50,7 @@ define(['jquery', 'animation', 'sprites'], function($, Animation, sprites) {
     	},
 	
     	createHurtSprite: function() {
+            if (!this.isLoaded) return;
     	    var canvas = document.createElement('canvas'),
     	        ctx = canvas.getContext('2d'),
     	        width = this.image.width,
@@ -69,7 +70,7 @@ define(['jquery', 'animation', 'sprites'], function($, Animation, sprites) {
         	        data[i] = 255;
         	        data[i+1] = data[i+2] = 75;
         	    }
-        	    spriteData.data = data;
+            // ImageData.data is read-only; the typed array was updated in place.
 
         	    ctx.putImageData(spriteData, 0, 0);
 
@@ -151,7 +152,7 @@ define(['jquery', 'animation', 'sprites'], function($, Animation, sprites) {
     	        }
     	    }
 
-    	    finalData.data = fdata;
+            // ImageData.data was updated in place.
     	    ctx.putImageData(finalData, 0, 0);
 	    
     	    this.silhouetteSprite = { 

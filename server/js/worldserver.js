@@ -1,7 +1,6 @@
 
 var cls = require("./lib/class"),
     _ = require("underscore"),
-    Log = require('log'),
     Entity = require('./entity'),
     Character = require('./character'),
     Mob = require('./mob'),
@@ -15,6 +14,8 @@ var cls = require("./lib/class"),
     Messages = require('./message'),
     Properties = require("./properties"),
     Utils = require("./utils"),
+    Formulas = require("./formulas"),
+    RPG = require("./profiles"),
     Types = require("../../shared/js/gametypes");
 
 // ======= GAME SERVER ========
@@ -66,8 +67,8 @@ module.exports = World = cls.Class.extend({
                 self.incrementPlayerCount();
             }
             
-            // Number of players in this world
-            self.pushToPlayer(player, new Messages.Population(self.playerCount));
+            // Refresh every connected player after an entry, including the new player.
+            self.updatePopulation();
             self.pushRelevantEntityListTo(player);
     
             var move_callback = function(x, y) {
@@ -112,6 +113,7 @@ module.exports = World = cls.Class.extend({
                 log.info(player.name + " has left the game.");
                 self.removePlayer(player);
                 self.decrementPlayerCount();
+                self.updatePopulation();
                 
                 if(self.removed_callback) {
                     self.removed_callback();
@@ -189,6 +191,7 @@ module.exports = World = cls.Class.extend({
         var regenCount = this.ups * 2;
         var updateCount = 0;
         setInterval(function() {
+            self.processCombat();
             self.processGroups();
             self.processQueues();
             
@@ -205,6 +208,22 @@ module.exports = World = cls.Class.extend({
         log.info(""+this.id+" created (capacity: "+this.maxPlayers+" players).");
     },
     
+    processCombat: function() {
+        var self = this, now = Date.now();
+        _.each(this.mobs, function(mob) {
+            var player = self.players[mob.target];
+            if (!player || player.isDead || player.firepotionTimeout || !player.near(mob, 2) || now - (mob.lastAttack || 0) < 1000) return;
+            mob.lastAttack = now;
+            var defense = RPG.equipment(player.session.profile, 'armor').bonus;
+            player.hitPoints -= Math.max(0, Formulas.dmg(mob.weaponLevel, player.armorLevel) - defense);
+            if (player.hitPoints <= 0) {
+                player.hitPoints = 0;
+                player.isDead = true;
+            }
+            self.handleHurtEntity(player);
+        });
+    },
+
     setUpdatesPerSecond: function(ups) {
         this.ups = ups;
     },
@@ -542,6 +561,9 @@ module.exports = World = cls.Class.extend({
                 var mob = entity,
                     item = this.getDroppedItem(mob);
 
+                attacker.session.profile.kills += 1;
+                attacker.session.profile.gold += Utils.randomInt(1, 4) * mob.weaponLevel;
+                attacker.syncProfile();
                 this.pushToPlayer(attacker, new Messages.Kill(mob));
                 this.pushToAdjacentGroups(mob.group, mob.despawn()); // Despawn must be enqueued before the item drop
                 if(item) {
@@ -598,7 +620,7 @@ module.exports = World = cls.Class.extend({
     },
 
     isValidPosition: function(x, y) {
-        if(this.map && _.isNumber(x) && _.isNumber(y) && !this.map.isOutOfBounds(x, y) && !this.map.isColliding(x, y)) {
+        if(this.map && Number.isSafeInteger(x) && Number.isSafeInteger(y) && !this.map.isOutOfBounds(x, y) && !this.map.isColliding(x, y)) {
             return true;
         }
         return false;

@@ -45,7 +45,7 @@ define(['player', 'entityfactory', 'lib/bison'], function(Player, EntityFactory,
         },
         
         connect: function(dispatcherMode) {
-            var url = "ws://"+ this.host +":"+ this.port +"/",
+            var url = (window.location.protocol === "https:" ? "wss://" : "ws://") + this.host + (this.port ? ":" + this.port : "") + "/",
                 self = this;
             
             log.info("Trying to connect to server : "+url);
@@ -92,7 +92,9 @@ define(['player', 'entityfactory', 'lib/bison'], function(Player, EntityFactory,
                     log.error(e, true);
                 };
 
-                this.connection.onclose = function() {
+                this.connection.onclose = function(event) {
+                    document.getElementById('connection-reason').textContent = 'Connexion interrompue. ' + (event.reason || 'Le serveur est peut-être en cours de redémarrage.');
+                    document.getElementById('connection-error').hidden = false;
                     log.debug("Connection closed");
                     $('#container').addClass('error');
                     
@@ -468,7 +470,8 @@ define(['player', 'entityfactory', 'lib/bison'], function(Player, EntityFactory,
             this.sendMessage([Types.Messages.HELLO,
                               player.name,
                               Types.getKindFromString(player.getSpriteName()),
-                              Types.getKindFromString(player.getWeaponName())]);
+                              Types.getKindFromString(player.getWeaponName()),
+                              localStorage.getItem('bq-token') || '']);
         },
 
         sendMove: function(x, y) {

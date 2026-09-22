@@ -1,4 +1,5 @@
 
-define(['lib/class', 'lib/underscore.min', 'lib/stacktrace', 'util'], function() {
+define(['lib/class', 'underscore', 'lib/stacktrace', 'util'], function(ClassModule, underscore) {
+    window._ = underscore;
     require(["main"]);
 });

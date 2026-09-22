@@ -1,0 +1,22 @@
+#rpg-hud { position: fixed; top: 18px; left: 20px; z-index: 40000; display: flex; align-items: center; gap: 12px; font: 16px/1.4 Arial, sans-serif; color: #f5dfaa; }
+#rpg-hud[hidden], #inventory-panel[hidden] { display: none; }
+#rpg-hud button, #inventory-panel button { font: bold 13px/1.4 Arial, sans-serif; color: #f4e5c2; background: #3b3e35; border: 2px solid #8d8d75; padding: 8px 12px; cursor: pointer; box-shadow: 0 2px #111; }
+#rpg-hud button:hover, #inventory-panel button:hover { background: #565b48; }
+#inventory-panel button:disabled { color: #b6ca97; background: #222b22; cursor: default; border-color: #465641; }
+#inventory-panel { position: fixed; z-index: 40001; top: 66px; left: 20px; width: min(520px, calc(100vw - 64px)); max-height: calc(100dvh - 130px); overflow: auto; background: #22251ff5; color: #e9e5d4; border: 4px ridge #aaa58b; padding: 18px; box-shadow: 0 12px 40px #000b; font: 14px/1.5 Arial, sans-serif; text-align: left; }
+#inventory-panel header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+#inventory-panel h2 { font: bold 22px/1.2 Arial, sans-serif; color: #f5dfaa; margin: 0; }
+#inventory-panel p { margin: 8px 0; color: #b6bcab; font: 13px/1.5 Arial, sans-serif; }
+#inventory-items { padding: 0; margin: 14px 0; list-style: none; }
+.inventory-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #505344; }
+.inventory-icon { width: 32px; height: 32px; flex-shrink: 0; image-rendering: pixelated; background-position: top left; background-repeat: no-repeat; }
+.inventory-details { flex: 1; min-width: 0; }
+.inventory-details strong, .inventory-details small { display: block; }
+.inventory-details small { color: #b6bcab; font-size: 11px; }
+.uncommon strong { color: #92ce82; }
+.rare strong { color: #88bfff; }
+#inventory-panel .inventory-discard { color: #d3b8a7; background: transparent; border-color: #5a5146; padding: 8px; }
+#connection-error { position: fixed; z-index: 50000; inset: 0; background: #12170fec; display: grid; place-content: center; text-align: center; color: #f4e5c2; font: 18px/1.5 Arial, sans-serif; padding: 30px; }
+#connection-error[hidden] { display: none; }
+#connection-error button { margin: 20px auto; padding: 12px 20px; font: inherit; cursor: pointer; }
+@media (max-width: 600px) { #inventory-panel { top: 52px; left: 8px; width: calc(100vw - 52px); padding: 12px; } #rpg-hud { top: 8px; left: 8px; } .inventory-item { gap: 6px; flex-wrap: wrap; } }

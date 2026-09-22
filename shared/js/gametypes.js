@@ -1,3 +1,4 @@
+var _ = typeof module === 'object' && module.exports ? require('underscore') : window._;
 
 Types = {
     Messages: {
@@ -27,7 +28,11 @@ Types = {
         HP: 23,
         BLINK: 24,
         OPEN: 25,
-        CHECK: 26
+        CHECK: 26,
+        PROFILE: 27,
+        INVENTORY_EQUIP: 28,
+        INVENTORY_DISCARD: 29,
+        LOOT_RESULT: 30
     },
     
     Entities: {

@@ -455,7 +455,7 @@ define(['entity', 'transition', 'timer'], function(Entity, Transition, Timer) {
             var self = this;
         
             if(this.target) {
-                if(this.target instanceof Character) {
+                if(this.target instanceof Character && this.target.isAttackedBy(this)) {
                     this.target.removeAttacker(this);
                 }
                 this.target = null;

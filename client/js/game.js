@@ -765,6 +765,18 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                 }
             });
         
+            this.client.handlers[Types.Messages.PROFILE] = function(data) {
+                if (self.onProfile) self.onProfile(data[1]);
+            };
+            this.client.handlers[Types.Messages.LOOT_RESULT] = function(data) {
+                var item = self.entities[data[1]];
+                if (data[2] && item) {
+                    if (!Types.isArmor(item.kind) && !Types.isWeapon(item.kind)) self.player.loot(item);
+                    self.removeItem(item);
+                    self.audioManager.playSound('loot');
+                }
+                self.showNotification(data[3]);
+            };
             this.client.onWelcome(function(id, name, x, y, hp) {
                 log.info("Received player ID from server : "+ id);
                 self.player.id = id;
@@ -894,6 +906,8 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                 self.player.onStopPathing(function(x, y) {
                     if(self.player.hasTarget()) {
                         self.player.lookAtTarget();
+                        self.client.sendMove(x, y);
+                        self.client.sendAttack(self.player.target);
                     }
                 
                     self.selectedCellVisible = false;
@@ -901,46 +915,7 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                     if(self.isItemAt(x, y)) {
                         var item = self.getItemAt(x, y);
                     
-                        try {
-                            self.player.loot(item);
-                            self.client.sendLoot(item); // Notify the server that this item has been looted
-                            self.removeItem(item);
-                            self.showNotification(item.getLootMessage());
-                        
-                            if(item.type === "armor") {
-                                self.tryUnlockingAchievement("FAT_LOOT");
-                            }
-                            
-                            if(item.type === "weapon") {
-                                self.tryUnlockingAchievement("A_TRUE_WARRIOR");
-                            }
-
-                            if(item.kind === Types.Entities.CAKE) {
-                                self.tryUnlockingAchievement("FOR_SCIENCE");
-                            }
-                            
-                            if(item.kind === Types.Entities.FIREPOTION) {
-                                self.tryUnlockingAchievement("FOXY");
-                                self.audioManager.playSound("firefox");
-                            }
-                        
-                            if(Types.isHealingItem(item.kind)) {
-                                self.audioManager.playSound("heal");
-                            } else {
-                                self.audioManager.playSound("loot");
-                            }
-                            
-                            if(item.wasDropped && !_(item.playersInvolved).include(self.playerId)) {
-                                self.tryUnlockingAchievement("NINJA_LOOT");
-                            }
-                        } catch(e) {
-                            if(e instanceof Exceptions.LootException) {
-                                self.showNotification(e.message);
-                                self.audioManager.playSound("noloot");
-                            } else {
-                                throw e;
-                            }
-                        }
+                        self.client.sendLoot(item); // Wait for the server before removing or consuming loot.
                     }
                 
                     if(!self.player.hasTarget() && self.map.isDoor(x, y)) {

@@ -6,7 +6,7 @@ var _ = require('underscore'),
     FormatChecker = Class.extend({
         init: function() {
             this.formats = [];
-            this.formats[Types.Messages.HELLO] = ['s', 'n', 'n'],
+            this.formats[Types.Messages.HELLO] = ['s', 'n', 'n', 's'],
             this.formats[Types.Messages.MOVE] = ['n', 'n'],
             this.formats[Types.Messages.LOOTMOVE] = ['n', 'n', 'n'],
             this.formats[Types.Messages.AGGRO] = ['n'],
@@ -18,10 +18,13 @@ var _ = require('underscore'),
             this.formats[Types.Messages.TELEPORT] = ['n', 'n'],
             this.formats[Types.Messages.ZONE] = [],
             this.formats[Types.Messages.OPEN] = ['n'],
-            this.formats[Types.Messages.CHECK] = ['n']
+            this.formats[Types.Messages.CHECK] = ['n'];
+            this.formats[Types.Messages.INVENTORY_EQUIP] = ['s'];
+            this.formats[Types.Messages.INVENTORY_DISCARD] = ['s'];
         },
         
         check: function(msg) {
+            if (!Array.isArray(msg) || msg.length > 512) return false;
             var message = msg.slice(0),
                 type = message[0],
                 format = this.formats[type];
@@ -33,10 +36,10 @@ var _ = require('underscore'),
                     return false;
                 }
                 for(var i = 0, n = message.length; i < n; i += 1) {
-                    if(format[i] === 'n' && !_.isNumber(message[i])) {
+                    if(format[i] === 'n' && !Number.isSafeInteger(message[i])) {
                         return false;
                     }
-                    if(format[i] === 's' && !_.isString(message[i])) {
+                    if(format[i] === 's' && (typeof message[i] !== 'string' || message[i].length > 256)) {
                         return false;
                     }
                 }
@@ -44,7 +47,7 @@ var _ = require('underscore'),
             }
             else if(type === Types.Messages.WHO) {
                 // WHO messages have a variable amount of params, all of which must be numbers.
-                return message.length > 0 && _.all(message, function(param) { return _.isNumber(param) });
+                return message.length > 0 && _.all(message, function(param) { return Number.isSafeInteger(param) });
             }
             else {
                 log.error("Unknown message type: "+type);

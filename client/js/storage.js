@@ -43,6 +43,7 @@ define(function() {
         clear: function() {
             if(this.hasLocalStorage()) {
                 localStorage.data = "";
+                localStorage.removeItem("bq-token");
                 this.resetData();
             }
         },

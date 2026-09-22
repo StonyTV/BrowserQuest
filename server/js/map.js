@@ -1,28 +1,19 @@
 
-var cls = require('./lib/class')
-    path = require('path'),
+var cls = require('./lib/class'),
     fs = require('fs'),
     _ = require('underscore'),
     Utils = require('./utils'),
     Checkpoint = require('./checkpoint');
 
-module.exports = Map = cls.Class.extend({    
+module.exports = cls.Class.extend({
     init: function(filepath) {
     	var self = this;
     
     	this.isLoaded = false;
     
-    	path.exists(filepath, function(exists) {
-            if(!exists) {
-                log.error(filepath + " doesn't exist.");
-                return;
-            }
-        
-            fs.readFile(filepath, function(err, file) {
-                var json = JSON.parse(file.toString());
-            
-                self.initMap(json);
-            });
+        fs.readFile(filepath, 'utf8', function(err, file) {
+            if(err) throw err;
+            self.initMap(JSON.parse(file));
         });
     },
 
@@ -30,6 +21,7 @@ module.exports = Map = cls.Class.extend({
         this.width = map.width;
         this.height = map.height;
         this.collisions = map.collisions;
+        this.doors = map.doors;
         this.mobAreas = map.roamingAreas;
         this.chestAreas = map.chestAreas;
         this.staticChests = map.staticChests;

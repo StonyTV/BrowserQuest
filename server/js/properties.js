@@ -6,6 +6,8 @@ var Properties = {
         drops: {
             flask: 40,
             burger: 10,
+            sword2: 15,
+            leatherarmor: 10,
             firepotion: 5
         },
         hp: 25,

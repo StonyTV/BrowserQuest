@@ -2,6 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const { WebSocketServer, WebSocket } = require('ws');
+const CommandQueue = require('./command-queue');
 const root = path.resolve(__dirname, '../../client');
 const shared = path.resolve(__dirname, '../../shared');
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.woff': 'font/woff', '.ttf': 'font/ttf', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
@@ -12,10 +13,12 @@ class Connection {
         this.socket = socket;
         this.alive = true;
         this.messages = 0;
+        this.pending = 0;
         this.windowStart = Date.now();
         socket.on('pong', () => { this.alive = true; });
         socket.on('error', () => socket.terminate());
         socket.on('message', (data, binary) => {
+            if (this.closing || server.stopping) return;
             if (Date.now() - this.windowStart > 1000) {
                 this.messages = 0;
                 this.windowStart = Date.now();
@@ -25,10 +28,14 @@ class Connection {
             try { message = JSON.parse(data.toString()); }
             catch { return this.close('Invalid JSON'); }
             if (!Array.isArray(message) || !Number.isSafeInteger(message[0])) return this.close('Invalid envelope');
-            if (this.listen_callback) this.listen_callback(message);
+            if (this.pending >= 100 || server.commands.pending >= 1000) return this.close('Server busy');
+            this.pending++;
+            server.commands.run(() => this.listen_callback?.(message))
+                .catch(() => {}) // The queue reports fatal failures to the server once.
+                .finally(() => this.pending--);
         });
         socket.once('close', () => {
-            if (this.close_callback) this.close_callback();
+            server.commands.run(() => this.close_callback?.()).catch(() => {});
             delete server._connections[id];
         });
     }
@@ -40,12 +47,13 @@ class Connection {
         if (this.socket.bufferedAmount > 1024 * 1024) return this.socket.terminate();
         this.socket.send(data);
     }
-    close(reason) { this.socket.close(1008, reason.slice(0, 100)); }
+    close(reason) { this.closing = true; this.socket.close(1008, reason.slice(0, 100)); }
 }
 
 class GameServer {
-    constructor(port, host) {
+    constructor(port, host, onFailure) {
         this._connections = {};
+        this.commands = new CommandQueue(onFailure);
         this.counter = 500000;
         this._httpServer = http.createServer((req, res) => {
             res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -77,7 +85,9 @@ class GameServer {
         this.wss = new WebSocketServer({ server: this._httpServer, maxPayload: 8192, perMessageDeflate: false,
             verifyClient: ({ origin, req }) => !origin || origin === 'http://' + req.headers.host || origin === 'https://' + req.headers.host
         });
+        this.wss.on('error', error => this.commands.run(() => { throw error; }).catch(() => {}));
         this.wss.on('connection', socket => {
+            if (this.stopping) { socket.close(1013, 'Server stopping'); return; }
             if (Object.keys(this._connections).length >= 250) { socket.close(1013, 'Server full'); return; }
             const connection = new Connection(++this.counter, socket, this);
             this._connections[connection.id] = connection;

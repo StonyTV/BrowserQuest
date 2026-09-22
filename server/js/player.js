@@ -25,7 +25,7 @@ module.exports = Player = Character.extend({
         this.formatChecker = new FormatChecker();
         this.disconnectTimeout = null;
         
-        this.connection.listen(function(message) {
+        this.connection.listen(async function(message) {
             var action = parseInt(message[0]);
             
             log.debug("Received action: "+action);
@@ -56,7 +56,7 @@ module.exports = Player = Character.extend({
                 
                 self.kind = Types.Entities.WARRIOR;
                 if (!self.session) {
-                    self.session = self.server.profiles.open(message[4], self.name);
+                    self.session = await self.server.profiles.open(message[4], self.name);
                     if (!self.session) return self.connection.close("Unknown character; create a new character");
                     if (self.server.profiles.sessions.has(self.session.token)) {
                         return self.connection.close("Character already connected in another window");
@@ -76,12 +76,14 @@ module.exports = Player = Character.extend({
                 self.hasEnteredGame = true;
                 self.isDead = false;
                 self.syncProfile();
-                self.server.gameplay.social.connect(self);
+                await self.server.gameplay.social.connect(self);
             }
             else if(action === Types.Messages.INVENTORY_EQUIP || action === Types.Messages.INVENTORY_DISCARD) {
+                var profile = structuredClone(self.session.profile);
                 var changed = action === Types.Messages.INVENTORY_EQUIP
-                    ? RPG.equip(self.session.profile, message[1]) : RPG.discard(self.session.profile, message[1]);
+                    ? RPG.equip(profile, message[1]) : RPG.discard(profile, message[1]);
                 if (changed) {
+                    await self.saveProfile(profile);
                     self.applyEquipment();
                     self.broadcast(self.equip(self.armor));
                     self.broadcast(self.equip(self.weapon));
@@ -89,7 +91,7 @@ module.exports = Player = Character.extend({
                 }
             }
             else if(action === Types.Messages.COMMAND) {
-                self.server.gameplay.handle(self, message[1], message[2]);
+                await self.server.gameplay.handle(self, message[1], message[2]);
             }
             else if(action === Types.Messages.WHO) {
                 message.shift();
@@ -99,7 +101,7 @@ module.exports = Player = Character.extend({
                 self.zone_callback();
             }
             else if(action === Types.Messages.CHAT) {
-                self.server.gameplay.handle(self, 'chat.send', {channel: 'zone', body: message[1]});
+                await self.server.gameplay.handle(self, 'chat.send', {channel: 'zone', body: message[1]});
             }
             else if(action === Types.Messages.MOVE) {
                 if(self.move_callback) {
@@ -152,7 +154,7 @@ module.exports = Player = Character.extend({
                     if(dmg > 0) {
                         mob.receiveDamage(dmg, self.id);
                         self.server.handleMobHate(mob.id, self.id, dmg);
-                        self.server.handleHurtEntity(mob, self, dmg);
+                        await self.server.handleHurtEntity(mob, self, dmg);
                     }
                 }
             }
@@ -171,6 +173,12 @@ module.exports = Player = Character.extend({
                     }
                     
                     if(Types.isItem(kind)) {
+                        if (isEquipment) {
+                            var profile = structuredClone(self.session.profile);
+                            profile.items.push(RPG.createItem(kind));
+                            await self.saveProfile(profile);
+                            self.syncProfile();
+                        }
                         self.send([Types.Messages.LOOT_RESULT, item.id, true, isEquipment ? "Objet ajouté au sac. Appuyez sur I pour vous équiper." : "Objet ramassé."]);
                         self.broadcast(item.despawn());
                         self.server.removeEntity(item);
@@ -201,9 +209,6 @@ module.exports = Player = Character.extend({
                                 self.server.pushToPlayer(self, self.health());
                                 self.server.sendEntityInfo(self);
                             }
-                        } else if(Types.isArmor(kind) || Types.isWeapon(kind)) {
-                            self.session.profile.items.push(RPG.createItem(kind));
-                            self.syncProfile();
                         }
                     }
                 }
@@ -250,7 +255,6 @@ module.exports = Player = Character.extend({
             }
             clearTimeout(self.disconnectTimeout);
             if (self.session && self.server.profiles.sessions.get(self.session.token) === self) {
-                self.server.profiles.save(self.session);
                 self.server.profiles.sessions.delete(self.session.token);
             }
             if(self.exit_callback) {
@@ -272,8 +276,13 @@ module.exports = Player = Character.extend({
         this.hitPoints = Math.min(this.hitPoints || this.maxHitPoints, this.maxHitPoints);
     },
 
-    syncProfile: function(saved) {
-        if (!saved) this.server.profiles.save(this.session);
+    saveProfile: async function(profile) {
+        var draft = { ...this.session, profile };
+        await this.server.profiles.save(draft);
+        this.session = draft;
+    },
+
+    syncProfile: function() {
         this.send([Types.Messages.PROFILE, { token: this.session.token, capacity: RPG.CAPACITY, maxHitPoints: this.maxHitPoints, hitPoints: this.hitPoints, ...this.session.profile }]);
         this.server.sendEntityInfo(this);
     },

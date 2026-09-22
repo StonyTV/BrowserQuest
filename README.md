@@ -1,17 +1,20 @@
-# BrowserQuest Revival — V2 sociale · jalon 0.3 alpha
+# BrowserQuest Revival — V2 sociale · jalon 0.3 alpha 2
 
 Reprise jouable de [Mozilla BrowserQuest](https://github.com/mozilla/BrowserQuest), dans un dépôt indépendant. Canvas 2D, JavaScript, Node et WebSocket. Le rendu pixel art et le monde original restent en place ; aucun React n'est nécessaire au moteur.
 
 ## Jouer en local
 
-Node **22.13 minimum** ; validation initiale sur Node **26.9**.
+Node **22.13 minimum** et Docker ; validation sur Node **26.9**. MongoDB utilise le port local **27019**, distinct des autres bases de la machine.
 
 ```sh
 npm ci
+npm run db:up    # Docker : MongoDB local dédié
 npm start
 ```
 
 Ouvrir **http://127.0.0.1:8085**. Un seul processus sert le client et les WebSockets.
+
+Pour conserver les personnages d’un ancien jalon SQLite : arrêter le jeu, exécuter `npm run db:migrate`, puis relancer. La source reste intacte ; voir [la procédure de stockage](docs/STORAGE.md).
 
 - Clic sur le sol : déplacement. Clic sur une créature : attaque automatique.
 - Clic sur un objet : ramassage, confirmé par le serveur.
@@ -27,21 +30,22 @@ Le sac contient 24 objets, équipement porté compris. L’or sert notamment à 
 
 ## Sauvegarde et multijoueur
 
-Nom, cases du sac, équipement, banque, or, victoires et guildes (blason, rangs et membres) sont conservés dans `data/characters.sqlite`. Le serveur crée une clé aléatoire, stockée dans ce navigateur ; seul son hash est enregistré en base. Un même personnage ne peut pas être connecté deux fois. Chaque reconnexion replace le personnage près des PNJ de guilde et de banque et restaure ses points de vie. Les groupes et leurs invitations sont temporaires ; le chef change lorsqu’il quitte le groupe. Les succès historiques restent locaux au navigateur.
+Nom, cases du sac, équipement, banque, or, victoires et guildes (blason, rangs et membres) sont conservés dans MongoDB, base `browserquest`, volume Docker `browserquest_mongo-data`. Le serveur crée une clé aléatoire, stockée dans ce navigateur ; seul son hash est enregistré en base. Un même personnage ne peut pas être connecté deux fois. Chaque reconnexion replace le personnage près des PNJ de guilde et de banque et restaure ses points de vie. Les groupes et leurs invitations sont temporaires ; le chef change lorsqu’il quitte le groupe. Les succès historiques restent locaux au navigateur.
 
 Deux fenêtres de navigation privée distinctes permettent de jouer deux personnages. Deux onglets partageant le stockage représentent le même personnage : le second est refusé. Pour un test LAN : `HOST=0.0.0.0 npm start`, puis utiliser l'IP de cette machine et le port 8085 sur les deux appareils.
 
-**Il s'agit d'un prototype local, pas d'un service MMO public.** Il n'y a pas encore de compte récupérable ni de sauvegarde entre appareils. Effacer le stockage navigateur fait perdre l'accès au personnage. Sauvegarder le dossier `data/` serveur arrêté pour conserver la base. Ne pas publier ce dossier.
+**Il s'agit d'un prototype local, pas d'un service MMO public.** Il n'y a pas encore de compte récupérable ni de sauvegarde entre appareils. Effacer le stockage navigateur fait perdre l'accès au personnage. Les instructions de migration et de sauvegarde sont dans [Stockage MongoDB](docs/STORAGE.md). Le dossier historique `data/` reste intact après migration.
 
 ## Développement et vérification
 
 ```sh
 npm run dev      # redémarrage serveur sur modification
-npm test         # tests unitaires et intégration avec de vrais WebSockets
+npm test         # régression sans Docker, adaptateur SQLite historique
+npm run test:mongo # même parcours WebSocket + transactions et migration MongoDB
 npm run vendor   # recopier les dépendances navigateur depuis le lockfile
 ```
 
-`PORT`, `HOST` et `BQ_DATABASE` permettent de choisir port, interface et fichier SQLite. `/status` expose disponibilité, version du protocole et population. Les bibliothèques navigateur sont embarquées : aucun CDN n'est nécessaire. `jquery` reste sur la branche 3.7 pour conserver les événements utilisés par le client ; RequireJS et Underscore ont également été mis à jour.
+`PORT` et `HOST` choisissent le port et l’interface. `MONGODB_URI` et `MONGODB_DATABASE` choisissent MongoDB. `BQ_DATABASE` active explicitement le stockage SQLite historique pour les tests. `/status` expose disponibilité, stockage, version du protocole et population. Les bibliothèques navigateur sont embarquées : aucun CDN n'est nécessaire. `jquery` reste sur la branche 3.7 pour conserver les événements utilisés par le client ; RequireJS et Underscore ont également été mis à jour.
 
 Le mode `?qa=1` expose l'instance cliente sous `window.__bqGame` pour les tests Canvas. Il ne donne aucun pouvoir supplémentaire au serveur. Les scripts `scripts/browser-*.js` sont des fonctions de parcours pour Playwright CLI, sur un personnage de test déjà connecté ; ils utilisent le client réel. Les captures et traces locales vont dans `output/playwright/` (ignoré par Git).
 
@@ -51,9 +55,9 @@ L'ancien empaquetage `bin/build.sh` a été remplacé par les fichiers servis di
 
 Le Canvas conserve les sprites et la carte BrowserQuest. La caméra suit le personnage sur tout l’écran ; le HUD et les panneaux DOM passent au-dessus. Les vues sont séparées en `client/js/ui/{items,social,chat,dom}.js`, avec un rendu SVG autonome pour les blasons. Le serveur regroupe les règles dans `server/js/domain/{gameplay,social,bank,rules}.js`. Coûts, capacités, canaux et services sont déclarés dans `shared/content/social.json`.
 
-Ce jalon valide le socle social ; **le goal V2 reste actif**. MongoDB, autorité complète du mouvement, progression/classes, métiers/craft et percepteurs ne sont pas encore implémentés. [Le suivi V2](docs/V2.md) distingue les preuves obtenues et le travail restant.
+Ce jalon valide le socle social ; **le goal V2 reste actif**. MongoDB est désormais le stockage par défaut, avec migration et transactions vérifiées. L’autorité complète du mouvement, progression/classes, métiers/craft et percepteurs restent à réaliser. [Le suivi V2](docs/V2.md) distingue les preuves obtenues et le travail restant.
 
-Pour reproduire le parcours visuel isolé : `node scripts/prepare-social-qa.js`, puis dans un autre terminal `PORT=8086 BQ_DATABASE=output/social-qa.sqlite npm start`. Exécuter la fonction générée `output/browser-social-run.js` avec Playwright CLI `run-code`, puis `scripts/browser-mobile.js`. La préparation injecte seulement des personnages de test dans `output/` et ne modifie pas `data/characters.sqlite`.
+Pour reproduire le parcours visuel isolé : `node scripts/prepare-social-qa.js`, puis dans un autre terminal `PORT=8086 MONGODB_DATABASE=bq_qa_social npm start`. Exécuter la fonction générée `output/browser-social-run.js` avec Playwright CLI `run-code`, puis `scripts/browser-mobile.js`. La préparation injecte seulement des personnages dans la base MongoDB `bq_qa_social` ; les identifiants des fixtures restent dans `output/`, ignoré par Git.
 
 ## Documents
 

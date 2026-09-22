@@ -11,7 +11,7 @@ class Gameplay {
         const spec = npc && content.services.find(service => service.kind === npc.kind && (!service.position || (service.position.x === npc.x && service.position.y === npc.y)));
         requireRule(npc?.type === 'npc' && player.near(npc, 3) && spec?.services.includes(kind), 'Rendez-vous auprès du PNJ pour cette action.');
     }
-    handle(player, action, payload) {
+    async handle(player, action, payload) {
         try {
             requireRule(payload && typeof payload === 'object' && !Array.isArray(payload), 'Commande invalide.');
             const social = this.social;
@@ -28,7 +28,7 @@ class Gameplay {
                 case 'inventory.move': {
                     const profile = structuredClone(player.session.profile);
                     requireRule(moveSlot(profile, payload.id, payload.slot), 'Déplacement impossible.');
-                    social.commit(player, profile);
+                    await social.commit(player, profile);
                     break;
                 }
                 case 'bank.item':
@@ -38,21 +38,21 @@ class Gameplay {
                     requireRule(typeof payload.deposit === 'boolean', 'Direction invalide.');
                     if (action === 'bank.item') Bank.transferItem(profile, payload.id, payload.deposit);
                     else Bank.transferGold(profile, payload.amount, payload.deposit);
-                    social.commit(player, profile);
+                    await social.commit(player, profile);
                     break;
                 }
-                case 'guild.create': this.service(player, 'guild'); social.createGuild(player, payload); break;
+                case 'guild.create': this.service(player, 'guild'); await social.createGuild(player, payload); break;
                 case 'guild.invite': social.invite(player, 'guild', payload.id); break;
                 case 'party.invite': social.invite(player, 'party', payload.id); break;
                 case 'invitation.answer':
                     requireRule(typeof payload.accept === 'boolean', 'Réponse invalide.');
-                    social.answer(player, payload.id, payload.accept); break;
+                    await social.answer(player, payload.id, payload.accept); break;
                 case 'party.leave': social.leaveParty(player); break;
                 case 'party.kick': social.leaveParty(player, payload.id); break;
-                case 'guild.crest': social.manageGuild(player, 'crest', payload); break;
-                case 'guild.role': social.manageGuild(player, 'role', payload); break;
-                case 'guild.leave': social.manageGuild(player, 'leave', payload); break;
-                case 'guild.kick': social.manageGuild(player, 'kick', payload); break;
+                case 'guild.crest': await social.manageGuild(player, 'crest', payload); break;
+                case 'guild.role': await social.manageGuild(player, 'role', payload); break;
+                case 'guild.leave': await social.manageGuild(player, 'leave', payload); break;
+                case 'guild.kick': await social.manageGuild(player, 'kick', payload); break;
                 case 'chat.send': social.chat(player, payload.channel, payload.body); break;
                 default: throw new RuleError('Action inconnue.');
             }

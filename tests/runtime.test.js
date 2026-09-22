@@ -7,10 +7,20 @@ const { mkdtempSync, rmSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const path = require('node:path');
 const directory = mkdtempSync(path.join(tmpdir(), 'browserquest-test-'));
-let child, base;
+const mongo = process.env.BQ_TEST_MONGO === '1';
+const database = 'bq_test_runtime_' + process.pid + '_' + Date.now();
+let child, base, restartProof;
+async function openStore() {
+    if (mongo) {
+        const { MongoProfileStore } = require('../server/js/storage/mongo');
+        return new MongoProfileStore(process.env.MONGODB_URI, database).connect();
+    }
+    const { ProfileStore } = require('../server/js/storage/sqlite');
+    return new ProfileStore(path.join(directory, 'characters.sqlite'));
+}
 const peers = [];
-before(async () => {
-    child = spawn(process.execPath, ['server/js/main.js'], { env: { ...process.env, PORT: '0', BQ_DATABASE: path.join(directory, 'characters.sqlite') } });
+async function startServer() {
+    child = spawn(process.execPath, ['server/js/main.js'], { env: { ...process.env, PORT: '0', BQ_DATABASE: mongo ? '' : path.join(directory, 'characters.sqlite'), MONGODB_DATABASE: database } });
     let output = '';
     base = await new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(output)), 15000);
@@ -27,10 +37,12 @@ before(async () => {
         await new Promise(resolve => setTimeout(resolve, 50));
     }
     throw new Error('World did not become ready');
-});
+}
+before(startServer);
 after(async () => {
     peers.forEach(peer => peer.socket.terminate());
     if (child && child.exitCode === null) { child.kill(); await once(child, 'exit'); }
+    if (mongo) { const store = await openStore(); await store.db.dropDatabase(); await store.close(); }
     rmSync(directory, { recursive: true, force: true });
 });
 async function connect(name, token = '') {
@@ -154,12 +166,12 @@ test('server schedules creature damage and rewards a kill exactly once', async (
     assert.equal(hero.messages.some(message => message[0] === 27), false);
 });
 test('a full bag rejects equipment without deleting the world item', async () => {
-    const { ProfileStore, createItem } = require('../server/js/profiles');
-    const store = new ProfileStore(path.join(directory, 'characters.sqlite'));
-    const session = store.open('', 'FullBag');
+    const { createItem } = require('../server/js/profiles');
+    const store = await openStore();
+    const session = await store.open('', 'FullBag');
     while (session.profile.items.length < 24) session.profile.items.push(createItem(61));
-    store.save(session);
-    store.close();
+    await store.save(session);
+    await store.close();
     const hero = await connect('FullBag', session.token);
     const list = await waitFor(hero, message => message[0] === 19);
     hero.send([20, ...list.slice(1)]);
@@ -172,10 +184,10 @@ test('a full bag rejects equipment without deleting the world item', async () =>
 });
 
 test('guilds, parties and bank enforce ownership, privacy and persistent membership', async () => {
-    const { ProfileStore, createItem } = require('../server/js/profiles');
-    const store = new ProfileStore(path.join(directory, 'characters.sqlite'));
-    const saved = store.open('', 'Meneur'); saved.profile.gold = 100;
-    const item = createItem(61, 95); saved.profile.items.push(item); store.save(saved); store.close();
+    const { createItem } = require('../server/js/profiles');
+    const store = await openStore();
+    const saved = await store.open('', 'Meneur'); saved.profile.gold = 100;
+    const item = createItem(61, 95); saved.profile.items.push(item); await store.save(saved); await store.close();
     const leader = await connect('Meneur', saved.token);
     const member = await connect('Membre');
     const outsider = await connect('Externe');
@@ -233,6 +245,13 @@ test('guilds, parties and bank enforce ownership, privacy and persistent members
     assert.match((await event(leader, 'notice')).message, /introuvable/);
     command(leader, 'bank.gold', {amount:20,deposit:true});
     await waitFor(leader, message => message[0] === 27 && message[1].bank.gold === 20);
+    // Two frames arrive before the first database write completes. Only one is affordable.
+    command(leader, 'bank.gold', {amount:40,deposit:true});
+    command(leader, 'bank.gold', {amount:40,deposit:true});
+    await waitFor(leader, message => message[0] === 27 && message[1].bank.gold === 60 && message[1].gold === 15);
+    assert.match((await event(leader, 'notice')).message, /insuffisant/);
+    command(leader, 'bank.gold', {amount:40,deposit:false});
+    await waitFor(leader, message => message[0] === 27 && message[1].bank.gold === 20 && message[1].gold === 55);
     command(leader, 'guild.leave');
     assert.match((await event(leader, 'notice')).message, /Transférez/);
     command(leader, 'guild.role', {id:member.profile.id,role:'leader'});
@@ -243,6 +262,39 @@ test('guilds, parties and bank enforce ownership, privacy and persistent members
     assert.equal(returned.profile.guildId, guild.id);
     assert.equal(returned.profile.bank.gold, 20);
     assert.equal(returned.profile.bank.items[0].id, item.id);
-    const reopened = new ProfileStore(path.join(directory, 'characters.sqlite'));
-    assert.equal(reopened.guilds.get(guild.id).crest.symbol, 'stag'); reopened.close();
+    const reopened = await openStore();
+    assert.equal(reopened.guilds.get(guild.id).crest.symbol, 'stag'); await reopened.close();
+    restartProof = {token:saved.token, profile:returned.profile, guild};
+});
+
+// This restarts the actual server process, not just a storage adapter.
+test('server restart restores the character, bank and guild for the same browser identity', async () => {
+    const exited = once(child, 'exit'); child.kill();
+    assert.equal((await exited)[0], 0);
+    await startServer();
+    const returned = await connect('Ignored', restartProof.token);
+    assert.deepEqual(returned.profile, restartProof.profile);
+    const social = (await waitFor(returned, message => message[0] === 32 && message[1] === 'social' && message[2].guild))[2];
+    assert.equal(social.guild.id, restartProof.guild.id);
+    assert.equal(social.guild.crest.symbol, 'stag');
+    assert.equal(social.party, null);
+    assert.equal((await (await fetch(base + '/status')).json()).storage, mongo ? 'mongodb' : 'sqlite');
+});
+
+test('a real storage conflict stops the server without acknowledging or overwriting the command', {skip:!mongo}, async () => {
+    const hero = await connect('Conflict');
+    const store = await openStore();
+    try {
+        const external = await store.open(hero.profile.token);
+        external.profile.gold = 777; await store.save(external);
+        const exited = once(child, 'exit');
+        const closed = once(hero.socket, 'close');
+        hero.send([31, 'inventory.move', {id:hero.profile.items[0].id,slot:23}]);
+        await closed;
+        assert.equal((await exited)[0], 1);
+        assert.equal(hero.messages.some(message => message[0] === 27), false);
+        const saved = await store.open(hero.profile.token);
+        assert.equal(saved.profile.gold, 777);
+        assert.equal(saved.profile.items[0].slot, 0);
+    } finally { await store.close(); }
 });

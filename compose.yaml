@@ -1,0 +1,23 @@
+name: browserquest
+services:
+  mongo:
+    image: mongo:8.0
+    command: [mongod, --replSet, bq-local, --bind_ip_all]
+    ports:
+      - "127.0.0.1:27019:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --eval 'try { if (!rs.status().ok) quit(1); }
+          catch (e) { if (e.codeName !== "NotYetInitialized") throw e;
+          rs.initiate({_id:"bq-local",members:[{_id:0,host:"localhost:27017"}]}); }
+          if (!db.hello().isWritablePrimary) quit(1);'
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+volumes:
+  mongo-data:

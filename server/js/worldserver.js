@@ -198,7 +198,8 @@ module.exports = World = cls.Class.extend({
         
         var regenCount = this.ups * 2;
         var updateCount = 0;
-        setInterval(function() {
+        this.tick = setInterval(function() {
+            if (self.server.commands.pending || self.server.commands.error || self.server.stopping) return;
             self.processCombat();
             self.processGroups();
             self.processQueues();
@@ -228,7 +229,9 @@ module.exports = World = cls.Class.extend({
                 player.hitPoints = 0;
                 player.isDead = true;
             }
-            self.handleHurtEntity(player);
+            self.handleHurtEntity(player).catch(error => {
+                self.server.commands.run(() => { throw error; }).catch(() => {});
+            });
         });
     },
 
@@ -569,7 +572,7 @@ module.exports = World = cls.Class.extend({
         }
     },
     
-    handleHurtEntity: function(entity, attacker, damage) {
+    handleHurtEntity: async function(entity, attacker, damage) {
         var self = this;
         this.sendEntityInfo(entity);
 
@@ -590,8 +593,10 @@ module.exports = World = cls.Class.extend({
                 var mob = entity,
                     item = this.getDroppedItem(mob);
 
-                attacker.session.profile.kills += 1;
-                attacker.session.profile.gold += Utils.randomInt(1, 4) * mob.weaponLevel;
+                var profile = structuredClone(attacker.session.profile);
+                profile.kills += 1;
+                profile.gold += Utils.randomInt(1, 4) * mob.weaponLevel;
+                await attacker.saveProfile(profile);
                 attacker.syncProfile();
                 this.pushToPlayer(attacker, new Messages.Kill(mob));
                 this.pushToAdjacentGroups(mob.group, mob.despawn()); // Despawn must be enqueued before the item drop

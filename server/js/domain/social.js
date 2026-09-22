@@ -19,9 +19,10 @@ class Social {
     party(player) { return [...this.parties.values()].find(party => party.members.includes(this.profile(player).id)); }
     findPlayer(id) { return this.players().find(player => this.profile(player).id === id); }
     event(player, type, data) { player.send([32, type, data]); }
-    commit(player, profile, guild) {
-        this.world.profiles.commit(profile ? [{ token: player.session.token, profile }] : [], guild);
-        if (profile) { player.session.profile = profile; player.syncProfile(true); }
+    async commit(player, profile, guild) {
+        const draft = profile && { ...player.session, profile };
+        await this.world.profiles.commit(draft ? [draft] : [], guild);
+        if (draft) { player.session = draft; player.syncProfile(); }
     }
     member(player) {
         return { id: this.profile(player).id, entityId: player.id, name: player.name, hp: player.hitPoints, maxHp: player.maxHitPoints, guildTag: this.guild(player)?.tag || '' };
@@ -41,9 +42,9 @@ class Social {
         }
         for (const player of online) this.world.sendEntityInfo(player);
     }
-    connect(player) {
+    async connect(player) {
         if (this.profile(player).guildId && !this.guild(player)) {
-            this.commit(player, {...this.profile(player), guildId: null});
+            await this.commit(player, {...this.profile(player), guildId: null});
         }
         this.publish();
     }
@@ -58,7 +59,7 @@ class Social {
         requireRule(typeof value.primary === 'string' && typeof value.secondary === 'string' && /^#[a-f\d]{6}$/i.test(value.primary) && /^#[a-f\d]{6}$/i.test(value.secondary), 'Couleur invalide.');
         return { frame: value.frame, symbol: value.symbol, primary: value.primary, secondary: value.secondary };
     }
-    createGuild(player, payload) {
+    async createGuild(player, payload) {
         requireRule(!this.guild(player), 'Vous appartenez déjà à une guilde.');
         const profile = structuredClone(this.profile(player));
         requireRule(profile.gold >= config.guild.cost, 'La fondation coûte ' + config.guild.cost + ' pièces d’or.');
@@ -69,7 +70,7 @@ class Social {
         const guild = { id: randomUUID(), name, tag, crest: this.validateCrest(payload.crest), members: [{ id: profile.id, name: profile.name, role: 'leader' }], createdAt: Date.now() };
         profile.gold -= config.guild.cost;
         profile.guildId = guild.id;
-        this.commit(player, profile, guild);
+        await this.commit(player, profile, guild);
         this.publish();
     }
     invite(player, type, targetId) {
@@ -94,7 +95,7 @@ class Social {
         this.invitations.set(key, { id: key, type, from: this.profile(player).id, fromName: player.name, to: this.profile(target).id, groupId: group.id, label: type === 'guild' ? group.name : player.name, expires: Date.now() + config.party.inviteLifetimeMs });
         this.publish();
     }
-    answer(player, id, accept) {
+    async answer(player, id, accept) {
         const invitation = this.invitations.get(id);
         requireRule(invitation && invitation.to === this.profile(player).id && invitation.expires > Date.now(), 'Invitation expirée.');
         if (!accept) { this.invitations.delete(id); this.publish(); return; }
@@ -104,7 +105,7 @@ class Social {
             requireRule(!this.guild(player) && guild.members.length < config.guild.maxMembers, 'Impossible de rejoindre cette guilde.');
             const profile = { ...this.profile(player), guildId: guild.id };
             guild.members.push({ id: profile.id, name: profile.name, role: 'member' });
-            this.commit(player, profile, guild);
+            await this.commit(player, profile, guild);
         } else {
             const party = this.parties.get(invitation.groupId);
             requireRule(party && party.leader === invitation.from && party.members.length < config.party.maxMembers && !this.party(player), 'Ce groupe n’est plus disponible.');
@@ -122,7 +123,7 @@ class Social {
         if (!party.members.length) this.parties.delete(party.id);
         this.publish();
     }
-    manageGuild(player, action, payload) {
+    async manageGuild(player, action, payload) {
         const guild = structuredClone(this.guild(player));
         requireRule(guild, 'Vous n’appartenez à aucune guilde.');
         const self = guild.members.find(member => member.id === this.profile(player).id);
@@ -140,11 +141,11 @@ class Social {
             requireRule(target.role !== 'leader' || guild.members.length === 1, 'Transférez le rôle de meneur avant de partir.');
             guild.members = guild.members.filter(member => member !== target);
             const online = this.findPlayer(target.id);
-            this.commit(online || player, online ? {...this.profile(online), guildId: null} : null, guild);
+            await this.commit(online || player, online ? {...this.profile(online), guildId: null} : null, guild);
             this.publish();
             return;
         }
-        this.commit(player, null, guild);
+        await this.commit(player, null, guild);
         this.publish();
     }
     chat(player, channel, body) {

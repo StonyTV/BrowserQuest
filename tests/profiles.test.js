@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const { mkdtempSync, rmSync } = require('node:fs');
 const path = require('node:path');
 const { tmpdir } = require('node:os');
-const { ProfileStore, createItem, createProfile, equipment, equip, discard } = require('../server/js/profiles');
+const { ProfileStore } = require('../server/js/storage/sqlite');
+const { createItem, createProfile, equipment, equip, discard } = require('../server/js/profiles');
 test('loot tiers and ownership rules', () => {
     const profile = createProfile('Hero');
     assert.equal(createItem(61, 0).bonus, 0);

@@ -54,3 +54,18 @@ Captures dans `output/playwright/` : `v2-guild-creation.png`, `v2-guild-multipla
 Corrections issues de ces essais : conversion souris après déplacement continu de la caméra, clics des panneaux ne commandant plus le monde, aide de première connexion non bloquante, libellés explicites des champs de blason, arrivée près des services sociaux. Les limitations générales ci-dessus restent valables : aucun test de charge ou appareil physique, mouvement encore à rendre entièrement autoritaire, migration MongoDB encore à faire.
 
 Démarrage à froid en Chromium mobile émulé (390 × 844, `isMobile` et `hasTouch`) : écran de création en portrait, entrée par toucher, sélection d’objet, déplacement vers la case 24 et déplacement du personnage par toucher. Aucun `pageerror`, aucun débordement horizontal. Captures : `v2-mobile-login.png` et `v2-mobile-touch.png`. Cette émulation ne remplace pas un essai sur téléphone physique.
+
+
+## Stockage V2 — 0.3.0-alpha.2
+
+`npm run test:mongo` : **18 tests réussis** sur un vrai MongoDB Docker en replica set local. `npm test` : **13 réussis, 5 tests MongoDB explicitement ignorés** ; la régression SQLite reste exécutable sans Docker.
+
+Nouvelles preuves : file de commandes ordonnée jusqu’à la déconnexion, absence de confirmation ou modification mémoire lors d’un échec bancaire, transaction de création de guilde entièrement annulée si le sigle existe, écritures périmées refusées, migration SQLite intégrale et idempotente, cible déjà peuplée protégée, deux dépôts envoyés sans attendre le premier acquittement, arrêt/redémarrage réel du processus et restauration de la banque/guilde. Un conflit d’écriture injecté dans une base de test provoque une déconnexion et un code de sortie 1 sans confirmation ni écrasement de la progression.
+
+Parcours social **deux contextes Chromium**, puis parcours **mobile tactile émulé 390 × 844**, rejoués sur `bq_qa_social` dans MongoDB. Sac 24 cases, blason, guilde, groupe, chat privé, dépôt/retrait, équipement et victoire vérifiés sans événement `pageerror`. Les captures `v2-*.png` ont été renouvelées.
+
+Migration du jeu local : 3 personnages importés ; comparaison de chaque profil avec la source. Chargement de **Jerome** avec la clé navigateur existante : 5 objets, épée en acier portée, 9 or, 4 victoires conservés. Capture : `output/playwright/v2-mongo-restored.png`. `/status` annonce `storage: mongodb`, `version: 0.3.0-alpha.2`, `ready: true`.
+
+Export/restauration QA : archive MongoDB de 3 personnages et 1 guilde restaurée dans une base temporaire ; tous les documents correspondent à la source. Base restaurée supprimée après vérification, archive conservée dans `output/mongo-qa-backup.archive.gz`. Voir [Stockage MongoDB](STORAGE.md) pour les commandes et limites.
+
+Les limites de charge, de mouvement autoritaire et de clients physiques restent ouvertes. Les tests n’établissent pas une disponibilité multi-serveur ni une reprise transparente après panne.

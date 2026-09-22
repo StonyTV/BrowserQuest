@@ -109,7 +109,7 @@ async function moveTo(peer,x,y,radius=0) {
     assert.deepEqual(peer.position,path.at(-1));
 }
 test('HTTP serves game and shared protocol, never server files', async () => {
-    assert.equal((await (await fetch(base + '/status')).json()).protocol, 4);
+    assert.equal((await (await fetch(base + '/status')).json()).protocol, 5);
     assert.equal((await fetch(base)).status, 200);
     assert.equal((await fetch(base + '/shared/js/gametypes.js')).status, 200);
     assert.equal((await fetch(base + '/server/config.json')).status, 404);
@@ -204,7 +204,10 @@ test('server schedules creature damage and rewards a kill exactly once', async (
     const adjacent = [[rat[3] + 1, rat[4]], [rat[3] - 1, rat[4]], [rat[3], rat[4] + 1], [rat[3], rat[4] - 1]]
         .find(([x,y]) => !map.collisions.includes(y * map.width + x));
     await moveTo(hero, ...adjacent);
-    hero.send([6, rat[1]]);
+    hero.send([6, rat[1]]); // Legacy AGGRO must not provoke a passive animal.
+    await new Promise(resolve => setTimeout(resolve, 400));
+    assert.equal(hero.messages.some(message => message[0] === 36 && message[1] === rat[1] && message[4] === hero.welcome[1]), false);
+    hero.send([8, rat[1]]);
     const damage = await waitFor(hero, message => message[0] === 10 && message[1] < 80);
     assert.ok(damage[1] >= 0); // No HURT message was sent by this client.
     for (let i = 0; i < 12 && !hero.messages.some(message => message[0] === 18); i++) {

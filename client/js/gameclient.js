@@ -474,11 +474,6 @@ define(['player', 'entityfactory', 'lib/bison'], function(Player, EntityFactory,
                               localStorage.getItem('bq-token') || '']);
         },
 
-        sendAggro: function(mob) {
-            this.sendMessage([Types.Messages.AGGRO,
-                              mob.id]);
-        },
-    
         sendAttack: function(mob) {
             this.sendMessage([Types.Messages.ATTACK,
                               mob.id]);
@@ -486,11 +481,6 @@ define(['player', 'entityfactory', 'lib/bison'], function(Player, EntityFactory,
     
         sendHit: function(mob) {
             this.sendMessage([Types.Messages.HIT,
-                              mob.id]);
-        },
-    
-        sendHurt: function(mob) {
-            this.sendMessage([Types.Messages.HURT,
                               mob.id]);
         },
     

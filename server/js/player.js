@@ -111,10 +111,7 @@ module.exports = Player = Character.extend({
                 self.server.movement.reject(self);
             }
             else if(action === Types.Messages.AGGRO) {
-                if(self.move_callback) {
-                    var enemy = self.server.getEntityById(message[1]);
-                    if (enemy && enemy.type === 'mob' && self.near(enemy, 12)) self.server.handleMobHate(enemy.id, self.id, 5);
-                }
+                // Detection is server-owned. Legacy client hints have no effect.
             }
             else if(action === Types.Messages.ATTACK) {
                 var mob = self.server.getEntityById(message[1]);
@@ -126,7 +123,7 @@ module.exports = Player = Character.extend({
             }
             else if(action === Types.Messages.HIT) {
                 var mob = self.server.getEntityById(message[1]);
-                if(mob && mob.type === 'mob' && mob.hitPoints > 0 && self.near(mob, 2) && Date.now() - (self.lastHit || 0) >= 600) {
+                if(mob && mob.type === 'mob' && mob.hitPoints > 0 && mob.ai.mode !== 'returning' && self.server.mobAI.canHit(self, mob) && Date.now() - (self.lastHit || 0) >= 600) {
                     self.lastHit = Date.now();
                     var dmg = Formulas.dmg(self.weaponLevel, mob.armorLevel) + RPG.equipment(self.session.profile, 'weapon').bonus;
                     
@@ -254,19 +251,10 @@ module.exports = Player = Character.extend({
     },
 
     destroy: function() {
-        var self = this;
-        
-        this.forEachAttacker(function(mob) {
-            mob.clearTarget();
-        });
         this.attackers = {};
-        
-        this.forEachHater(function(mob) {
-            mob.forgetPlayer(self.id);
-        });
         this.haters = {};
     },
-    
+
     getState: function() {
         var basestate = this._getBaseState(),
             state = [this.name, this.orientation, this.armor, this.weapon];
@@ -296,10 +284,6 @@ module.exports = Player = Character.extend({
     
     onExit: function(callback) {
         this.exit_callback = callback;
-    },
-    
-    onMove: function(callback) {
-        this.move_callback = callback;
     },
     
     onZone: function(callback) {

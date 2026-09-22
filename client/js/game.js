@@ -1,10 +1,10 @@
 
 define(['infomanager', 'bubble', 'renderer', 'map', 'animation', 'sprite', 'tile',
         'warrior', 'gameclient', 'audio', 'updater', 'pathfinder',
-        'item', 'mob', 'npc', 'player', 'character', 'chest', 'mobs', 'exceptions', 'config', 'movement', '../../shared/js/gametypes'],
+        'item', 'mob', 'npc', 'player', 'character', 'chest', 'mobs', 'exceptions', 'config', 'movement', 'mob-sync', '../../shared/js/gametypes'],
 function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedTile,
          Warrior, GameClient, AudioManager, Updater, Pathfinder,
-         Item, Mob, Npc, Player, Character, Chest, Mobs, Exceptions, config, Movement) {
+         Item, Mob, Npc, Player, Character, Chest, Mobs, Exceptions, config, Movement, MobSync) {
     
     var Game = Class.extend({
         init: function(app) {
@@ -784,6 +784,7 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                 self.showNotification(data[3]);
             };
             this.movementSync = new Movement(this);
+            this.mobSync = new MobSync(this);
             this.client.onWelcome(function(id, name, x, y, hp) {
                 self.movementSync.reset();
                 log.info("Received player ID from server : "+ id);
@@ -839,22 +840,6 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
         	        }
                 });
                 
-                self.player.onCheckAggro(function() {
-                    self.forEachMob(function(mob) {
-                        if(mob.isAggressive && !mob.isAttacking() && self.player.isNear(mob, mob.aggroRange)) {
-                            self.player.aggro(mob);
-                        }
-                    });
-                });
-            
-                self.player.onAggro(function(mob) {
-                    if(!mob.isWaitingToAttack(self.player) && !self.player.isAttackedBy(mob)) {
-                        self.player.log_info("Aggroed by " + mob.id + " at ("+self.player.gridX+", "+self.player.gridY+")");
-                        self.client.sendAggro(mob);
-                        mob.waitToAttack(self.player);
-                    }
-                });
-
                 self.player.onBeforeStep(function() {
                     var blockingEntity = self.getEntityAt(self.player.nextGridX, self.player.nextGridY);
                     if(blockingEntity && blockingEntity.id !== self.playerId) {
@@ -873,7 +858,7 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                         if(attacker.isAdjacent(attacker.target)) {
                             attacker.lookAtTarget();
                         } else {
-                            attacker.follow(self.player);
+                            if (!(attacker instanceof Mob)) attacker.follow(self.player);
                         }
                     });
                 
@@ -933,7 +918,7 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                     
                     self.player.forEachAttacker(function(attacker) {
                         if(!attacker.isAdjacentNonDiagonal(self.player)) {
-                            attacker.follow(self.player);
+                            if (!(attacker instanceof Mob)) attacker.follow(self.player);
                         }
                     });
                 
@@ -1051,7 +1036,7 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                                                 if(attacker.isAdjacent(attacker.target)) {
                                                     attacker.lookAtTarget();
                                                 } else {
-                                                    attacker.follow(entity);
+                                                    if (!(attacker instanceof Mob)) attacker.follow(entity);
                                                 }
                                             });
                                         }
@@ -1075,7 +1060,7 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                                         
                                             entity.forEachAttacker(function(attacker) {
                                                 if(!attacker.isAdjacentNonDiagonal(entity) && attacker.id !== self.playerId) {
-                                                    attacker.follow(entity);
+                                                    if (!(attacker instanceof Mob)) attacker.follow(entity);
                                                 }
                                             });
                                 
@@ -1097,10 +1082,6 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                                         
                                         if(entity.hasTarget()) {
                                             ignoreTarget(entity.target);
-                                        } else if(entity.previousTarget) {
-                                            // If repositioning before attacking again, ignore previous target
-                                            // See: tryMovingToADifferentTile()
-                                            ignoreTarget(entity.previousTarget);
                                         }
                                         
                                         return self.findPath(entity, x, y, ignored);
@@ -1434,7 +1415,10 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
             if(attacker.hasTarget()) {
                 attacker.removeTarget();
             }
-            attacker.engage(target);
+            if (attacker instanceof Mob) {
+                attacker.setTarget(target);
+                attacker.attackingMode = true;
+            } else attacker.engage(target);
             
             if(attacker.id !== this.playerId) {
                 target.addAttacker(attacker);
@@ -1884,137 +1868,18 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
         	}
         },
         
-        isMobOnSameTile: function(mob, x, y) {
-            var X = x || mob.gridX,
-                Y = y || mob.gridY,
-                list = this.entityGrid[Y][X],
-                result = false;
-            
-            _.each(list, function(entity) {
-                if(entity instanceof Mob && entity.id !== mob.id) {
-                    result = true;
-                }
-            });
-            return result;
-        },
-        
-        getFreeAdjacentNonDiagonalPosition: function(entity) {
-            var self = this,
-                result = null;
-            
-            entity.forEachAdjacentNonDiagonalPosition(function(x, y, orientation) {
-                if(!result && !self.map.isColliding(x, y) && !self.isMobAt(x, y)) {
-                    result = {x: x, y: y, o: orientation};
-                }
-            });
-            return result;
-        },
-        
-        tryMovingToADifferentTile: function(character) {
-            var attacker = character,
-                target = character.target;
-            
-            if(attacker && target && target instanceof Player) {
-                if(!target.isMoving() && attacker.getDistanceToEntity(target) === 0) {
-                    var pos;
-                    
-                    switch(target.orientation) {
-                        case Types.Orientations.UP:
-                            pos = {x: target.gridX, y: target.gridY - 1, o: target.orientation}; break;
-                        case Types.Orientations.DOWN:
-                            pos = {x: target.gridX, y: target.gridY + 1, o: target.orientation}; break;
-                        case Types.Orientations.LEFT:
-                            pos = {x: target.gridX - 1, y: target.gridY, o: target.orientation}; break;
-                        case Types.Orientations.RIGHT:
-                            pos = {x: target.gridX + 1, y: target.gridY, o: target.orientation}; break;
-                    }
-                    
-                    if(pos) {
-                        attacker.previousTarget = target;
-                        attacker.disengage();
-                        attacker.idle();
-                        this.makeCharacterGoTo(attacker, pos.x, pos.y);
-                        target.adjacentTiles[pos.o] = true;
-                        
-                        return true;
-                    }
-                }
-            
-                if(!target.isMoving() && attacker.isAdjacentNonDiagonal(target) && this.isMobOnSameTile(attacker)) {
-                    var pos = this.getFreeAdjacentNonDiagonalPosition(target);
-            
-                    // avoid stacking mobs on the same tile next to a player
-                    // by making them go to adjacent tiles if they are available
-                    if(pos && !target.adjacentTiles[pos.o]) {
-                        if(this.player.target && attacker.id === this.player.target.id) {
-                            return false; // never unstack the player's target
-                        }
-                        
-                        attacker.previousTarget = target;
-                        attacker.disengage();
-                        attacker.idle();
-                        this.makeCharacterGoTo(attacker, pos.x, pos.y);
-                        target.adjacentTiles[pos.o] = true;
-                        
-                        return true;
-                    }
-                }
-            }
-            return false;
-        },
-    
-        /**
-         * 
-         */
         onCharacterUpdate: function(character) {
-            var time = this.currentTime,
-                self = this;
-            
-            // If mob has finished moving to a different tile in order to avoid stacking, attack again from the new position.
-            if(character.previousTarget && !character.isMoving() && character instanceof Mob) {
-                var t = character.previousTarget;
-                
-                if(this.getEntityById(t.id)) { // does it still exist?
-                    character.previousTarget = null;
-                    this.createAttackLink(character, t);
-                    return;
-                }
-            }
-        
-            if(character.isAttacking() && !character.previousTarget) {
-                var isMoving = this.tryMovingToADifferentTile(character); // Don't let multiple mobs stack on the same tile when attacking a player.
-                
-                if(character.canAttack(time)) {
-                    if(!isMoving) { // don't hit target if moving to a different tile.
-                        if(character.hasTarget() && character.getOrientationTo(character.target) !== character.orientation) {
-                            character.lookAtTarget();
-                        }
-                        
-                        character.hit();
-                        
-                        if(character.id === this.playerId) {
-                            this.client.sendHit(character.target);
-                        }
-                        
-                        if(character instanceof Player && this.camera.isVisible(character)) {
-                            this.audioManager.playSound("hit"+Math.floor(Math.random()*2+1));
-                        }
-                        
-                        if(character.hasTarget() && character.target.id === this.playerId && this.player && !this.player.invincible) {
-                            this.client.sendHurt(character);
-                        }
-                    }
-                } else {
-                    if(character.hasTarget()
-                    && character.isDiagonallyAdjacent(character.target)
-                    && character.target instanceof Player
-                    && !character.target.isMoving()) {
-                        character.follow(character.target);
-                    }
+            if (character instanceof Mob) return; // Monsters move and strike only on server updates.
+            if (character.isAttacking() && character.canAttack(this.currentTime)) {
+                if (character.hasTarget()) character.lookAtTarget();
+                character.hit();
+                if (character.id === this.playerId) this.client.sendHit(character.target);
+                if (character instanceof Player && this.camera.isVisible(character)) {
+                    this.audioManager.playSound("hit" + Math.floor(Math.random()*2+1));
                 }
             }
         },
-    
+
         resetZone: function() {
             this.bubbleManager.clean();
             this.initAnimatedTiles();

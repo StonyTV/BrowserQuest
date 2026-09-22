@@ -83,3 +83,15 @@ Le ramassage attend l’arrivée confirmée lorsque le client est en avance. Deu
 Captures locales : `v2-movement-observer.png`, `v2-door-interior.png`, `v2-door-return.png`, dans `output/playwright/`. Le clic explicite sur une porte sous le personnage a été corrigé après reproduction d’un retour bloqué.
 
 Limites : un aller-retour de porte représentatif testé au navigateur, pas les 84 ; délai artificiel sortant, pas une campagne de perte de paquets ni de charge ; agression et poursuite des monstres encore héritées. Le jalon ne constitue pas une validation anti-triche globale ou MMO public.
+
+## IA des créatures V2 — 0.3.0-alpha.4
+
+`npm run test:mongo` : **35 tests réussis**. Sept tests d’IA à horloge contrôlée couvrent détection sans message client, rats passifs, cadence sans accélération après un tick retardé, détour autour des murs/PNJ, absence de coups diagonaux ou à travers une case, cible inaccessible, limite du territoire, retour à pied, reprise sur un autre attaquant après mort/déconnexion/porte, remise à zéro à la réapparition et cases de mêlée distinctes. Deux tests du rendu vérifient l’interpolation sans poursuite inventée et le rejet des mises à jour d’une créature mourante.
+
+Le test WebSocket de combat confirme qu’un ancien AGGRO envoyé à un rat est sans effet, puis qu’un vrai HIT déclenche sa riposte sans HURT du client. La récompense de mort reste persistée une seule fois. Les parcours MongoDB de banque, guilde, reconnexion, redémarrage et conflit d’écriture restent verts.
+
+`scripts/browser-combat.js`, exécuté avec **deux contextes Chromium** et des personnages isolés dans `bq_qa_ai` : clic réel sur un rat, premier coup, fuite par déplacement normal, poursuite et retour observés par l’autre joueur. Huit pas successifs ont été observés, sans saut de case, jusqu’au point de départ. Ensuite, marche jusqu’aux gobelins du sud : même coup spontané reçu sur les deux connexions ; zéro paquet AGGRO/HURT envoyé par le client ; déconnexion du joueur poursuivi et suppression de sa cible chez le témoin. Aucun `pageerror` sur le parcours final. Captures : `v2-ai-return.png`, `v2-ai-aggro.png`.
+
+Le parcours social complet a été rejoué : sac, déplacement de case, création de guilde/blason, invitation, groupe, chat de guilde, dépôt/retrait bancaire, équipement et victoire par clic. Le parcours tactile émulé 390 × 844 vérifie à nouveau sac, case vide, déplacement et arrivée serveur, sans débordement horizontal ni `pageerror`.
+
+Ces preuves portent sur des groupes de quelques joueurs, pas une charge de 200 connexions. Les routes des créatures sont bornées à leur territoire et elles ne franchissent pas les portes. Elles peuvent se croiser pendant la marche ; l’espacement concerne leurs positions de mêlée. Aucun client Unity ou téléphone physique n’a été validé. Progression/classes, métiers/craft et percepteurs restent ouverts dans le goal V2.

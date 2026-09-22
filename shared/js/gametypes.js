@@ -37,7 +37,8 @@ Types = {
         EVENT: 32,
         ENTITY_INFO: 33,
         MOVE_PATH: 34,
-        POSITION: 35
+        POSITION: 35,
+        MOB_STATE: 36
     },
     
     Entities: {

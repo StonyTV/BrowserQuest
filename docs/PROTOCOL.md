@@ -1,6 +1,6 @@
-# Protocole 4 du prototype
+# Protocole 5 du prototype
 
-Transport : WebSocket texte JSON, à la même origine que le client. `/status` indique `protocol: 4`. Aucun cookie ou format spécifique à JavaScript n'est nécessaire ; un client Unity peut envoyer les mêmes messages JSON. La compatibilité Unity n'a pas été implémentée ni testée.
+Transport : WebSocket texte JSON, à la même origine que le client. `/status` indique `protocol: 5`. Aucun cookie ou format spécifique à JavaScript n'est nécessaire ; un client Unity peut envoyer les mêmes messages JSON. La compatibilité Unity n'a pas été implémentée ni testée.
 
 Le serveur envoie d'abord le texte `go`. Le client répond :
 
@@ -21,11 +21,19 @@ Les messages sortants sont soit un tableau d'action, soit un tableau de tableaux
 
 `items` contient `{id,kind,rarity,bonus,slot}`. `slot` est une case fixe de 0 à 23 ; les objets déposés dans `bank.items` n’ont pas de case du sac. `bank` contient aussi le solde `gold`. `equipped` contient `{weapon:uuid,armor:uuid}`. Une mutation valide renvoie PROFILE complet. Le serveur tire les raretés, calcule les bonus, contrôle la propriété et persiste l'état. Ne jamais exposer le champ `token` aux autres joueurs ni dans des logs.
 
-Les messages originaux 0–26 sont définis dans `shared/js/gametypes.js`, leur validation entrante dans `server/js/format.js` et leur sérialisation sortante dans `server/js/message.js`. HURT (9) est ignoré : les monstres infligent désormais leurs dégâts via la boucle serveur. HIT (8) vérifie cible de type créature, proximité et délai minimum de 600 ms. Le client web attaque normalement toutes les 800 ms.
+Les messages originaux 0–26 sont définis dans `shared/js/gametypes.js`, leur validation entrante dans `server/js/format.js` et leur sérialisation sortante dans `server/js/message.js`. AGGRO (6) et HURT (9) sont ignorés : les monstres infligent désormais leurs dégâts via la boucle serveur. HIT (8) vérifie cible de type créature, contact orthogonal (ou même case), créature hors retour au point de départ et délai minimum de 600 ms. Le client web attaque normalement toutes les 800 ms.
 
 Limites : message entrant 8 Kio, 100 messages/seconde/connexion, chaînes de 256 caractères maximum, WHO de 511 identifiants maximum. Ping/pong toutes les 30 secondes. Le navigateur doit présenter la même origine ; les clients natifs peuvent omettre Origin. L'origine n'est pas un mécanisme d'authentification.
 
-Avant un client alternatif distribué publiquement, prévoir une négociation de version explicite, des erreurs typées et des snapshots globaux avec tick. Le protocole 4 contrôle les routes des joueurs ; l’agression et la poursuite des monstres restent à moderniser. Aucune garantie anti-triche complète n’est établie.
+Avant un client alternatif distribué publiquement, prévoir une négociation de version explicite, des erreurs typées et des snapshots globaux avec tick. Le protocole 5 contrôle les routes des joueurs et les décisions des monstres. Aucune garantie anti-triche complète n’est établie.
+
+## Créatures autoritaires
+
+`[36,id,x,y,cibleOuNull,état,duréePasMs,orientation,frappe]` est exclusivement serveur → client. Les états sont `idle`, `chasing`, `attacking`, `returning`. `frappe: true` déclenche une animation de coup réellement décidé par le serveur ; les PV arrivent avec HEALTH/ENTITY_INFO. Les positions sont les cases exécutées, pas une destination à rejoindre librement. Le client interpole ces positions, sans pathfinding, détection d’agression ni répétition autonome des coups pour les monstres. Un snapshot suit chaque SPAWN, y compris lorsqu’un joueur entre dans une zone déjà en combat.
+
+`shared/content/mobs.json` déclare PV, armure, arme, butins, durée de pas, intervalle d’attaque et rayon d’agression par espèce. Rats et chauves-souris sont passifs ; un coup valide crée leur hostilité. Les autres créatures détectent les joueurs vivants accessibles à courte distance. Le pathfinding orthogonal évite collisions et PNJ, avec une recherche bornée à 1 024 cases et un territoire de 12 cases autour du point de départ. Les créatures choisissent des cases de mêlée distinctes ; elles peuvent se croiser pendant leur marche.
+
+La cible suit l’hostilité générée par les coups. Mort, déconnexion ou porte retirent le joueur des listes d’hostilité et permettent une reprise sur un autre attaquant vivant dans le territoire. Sans cible valide, ou après trois secondes sans chemin, le monstre revient à pied. Il ignore les coups pendant ce retour et récupère tous ses PV à l’arrivée. Aucun tick retardé ne permet plusieurs pas ou coups instantanés. Les monstres ne traversent pas les portes.
 
 ## Déplacement autoritaire
 

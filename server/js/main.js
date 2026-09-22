@@ -42,7 +42,7 @@ async function start() {
     });
     server.onRequestStatus(() => JSON.stringify({
         version: require('../../package.json').version,
-        protocol: 4,
+        protocol: 5,
         storage: process.env.BQ_DATABASE ? 'sqlite' : 'mongodb',
         ready: !stopping && !server.commands.error && worlds.every(world => world.zoneGroupsReady),
         worlds: worlds.map(world => ({ id: world.id, players: world.playerCount, capacity: world.maxPlayers }))

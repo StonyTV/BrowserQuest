@@ -4,11 +4,9 @@ define(['character'], function(Character) {
     var Mob = Character.extend({
         init: function(id, kind) {
             this._super(id, kind);
-        
-            this.aggroRange = 1;
-            this.isAggressive = true;
-        }
+        },
+        // Legacy character callbacks may request following; only MOB_STATE moves a mob.
+        follow: function() {}
     });
-    
     return Mob;
 });

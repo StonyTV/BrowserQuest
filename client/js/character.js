@@ -23,11 +23,9 @@ define(['entity', 'transition', 'timer'], function(Entity, Transition, Timer) {
     		this.movement = new Transition();
     		this.path = null;
     		this.newDestination = null;
-    		this.adjacentTiles = {};
 		
     		// Combat
     		this.target = null;
-            this.unconfirmedTarget = null;
             this.attackers = {};
         
             // Health
@@ -109,7 +107,6 @@ define(['entity', 'transition', 'timer'], function(Entity, Transition, Timer) {
     
         moveTo_: function(x, y, callback) {
             this.destination = { gridX: x, gridY: y };
-            this.adjacentTiles = {};
         
             if(this.isMoving()) {
                 this.continueTo(x, y);
@@ -194,7 +191,6 @@ define(['entity', 'transition', 'timer'], function(Entity, Transition, Timer) {
                 }
             
     		    this.updatePositionOnGrid();
-                this.checkAggro();
             
                 if(this.interrupted) { // if Character.stop() has been called
                     stop = true;
@@ -273,26 +269,6 @@ define(['entity', 'transition', 'timer'], function(Entity, Transition, Timer) {
                 near = true;
             }
             return near;
-        },
-    
-        onAggro: function(callback) {
-            this.aggro_callback = callback;
-        },
-        
-        onCheckAggro: function(callback) {
-            this.checkaggro_callback = callback;
-        },
-    
-        checkAggro: function() {
-            if(this.checkaggro_callback) {
-                this.checkaggro_callback();
-            }
-        },
-        
-        aggro: function(character) {
-            if(this.aggro_callback) {
-                this.aggro_callback(character);
-            }
         },
     
         onDeath: function(callback) {
@@ -441,7 +417,6 @@ define(['entity', 'transition', 'timer'], function(Entity, Transition, Timer) {
                 if(this.hasTarget()) {
                     this.removeTarget(); // Cleanly remove the previous one
                 }
-                this.unconfirmedTarget = null;
                 this.target = character;
             } else {
                 log.debug(character.id + " is already the target of " + this.id);
@@ -470,29 +445,6 @@ define(['entity', 'transition', 'timer'], function(Entity, Transition, Timer) {
             return !(this.target === null);
         },
 
-        /**
-         * Marks this character as waiting to attack a target.
-         * By sending an "attack" message, the server will later confirm (or not)
-         * that this character is allowed to acquire this target.
-         *
-         * @param {Character} character The target character
-         */
-        waitToAttack: function(character) {
-            this.unconfirmedTarget = character;
-        },
-    
-        /**
-         * Returns true if this character is currently waiting to attack the target character.
-         * @param {Character} character The target character.
-         * @returns {Boolean} Whether this character is waiting to attack.
-         */
-        isWaitingToAttack: function(character) {
-            return (this.unconfirmedTarget === character);
-        },
-    
-        /**
-         * 
-         */
         canAttack: function(time) {
             if(this.canReachTarget() && this.attackCooldown.isOver(time)) {
                 return true;

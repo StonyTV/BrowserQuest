@@ -18,6 +18,7 @@ var cls = require("./lib/class"),
     RPG = require("./profiles"),
     Gameplay = require("./domain/gameplay"),
     Movement = require("./domain/movement"),
+    MobAI = require("./domain/mob-ai"),
     SocialContent = require("../../shared/content/social.json"),
     Types = require("../../shared/js/gametypes");
 
@@ -54,6 +55,7 @@ module.exports = World = cls.Class.extend({
         this.zoneGroupsReady = false;
         this.gameplay = new Gameplay(this);
         this.movement = new Movement(this);
+        this.mobAI = new MobAI(this);
         
         this.onPlayerConnect(function(player) {
             player.onRequestPosition(function() {
@@ -76,26 +78,6 @@ module.exports = World = cls.Class.extend({
             self.updatePopulation();
             self.pushRelevantEntityListTo(player);
     
-            var move_callback = function(x, y) {
-                log.debug(player.name + " is moving to (" + x + ", " + y + ").");
-                
-                player.forEachAttacker(function(mob) {
-                    var target = self.getEntityById(mob.target);
-                    if(target) {
-                        var pos = self.findPositionNextTo(mob, target);
-                        if(mob.distanceToSpawningPoint(pos.x, pos.y) > 50) {
-                            mob.clearTarget();
-                            mob.forgetEveryone();
-                            player.removeAttacker(mob);
-                        } else {
-                            self.moveEntity(mob, pos.x, pos.y);
-                        }
-                    }
-                });
-            };
-
-            player.onMove(move_callback);
-            
             player.onZone(function() {
                 var hasChangedGroups = self.handleEntityGroupMembership(player);
                 
@@ -127,15 +109,6 @@ module.exports = World = cls.Class.extend({
             
             if(self.added_callback) {
                 self.added_callback();
-            }
-        });
-        
-        // Called when an entity is attacked by another entity
-        this.onEntityAttack(function(attacker) {
-            var target = self.getEntityById(attacker.target);
-            if(target && attacker.type === "mob") {
-                var pos = self.findPositionNextTo(attacker, target);
-                self.moveEntity(attacker, pos.x, pos.y);
             }
         });
         
@@ -202,7 +175,7 @@ module.exports = World = cls.Class.extend({
         this.tick = setInterval(function() {
             if (self.server.commands.pending || self.server.commands.error || self.server.stopping) return;
             self.movement.tick();
-            self.processCombat();
+            self.mobAI.tick();
             self.processGroups();
             self.processQueues();
             
@@ -219,21 +192,15 @@ module.exports = World = cls.Class.extend({
         log.info(""+this.id+" created (capacity: "+this.maxPlayers+" players).");
     },
     
-    processCombat: function() {
-        var self = this, now = Date.now();
-        _.each(this.mobs, function(mob) {
-            var player = self.players[mob.target];
-            if (!player || player.isDead || player.firepotionTimeout || !player.near(mob, 2) || now - (mob.lastAttack || 0) < 1000) return;
-            mob.lastAttack = now;
-            var defense = RPG.equipment(player.session.profile, 'armor').bonus;
-            player.hitPoints -= Math.max(0, Formulas.dmg(mob.weaponLevel, player.armorLevel) - defense);
-            if (player.hitPoints <= 0) {
-                player.hitPoints = 0;
-                player.isDead = true;
-            }
-            self.handleHurtEntity(player).catch(error => {
-                self.server.commands.run(() => { throw error; }).catch(() => {});
-            });
+    damagePlayer: function(mob, player) {
+        var defense = RPG.equipment(player.session.profile, 'armor').bonus;
+        player.hitPoints -= Math.max(0, Formulas.dmg(mob.weaponLevel, player.armorLevel) - defense);
+        if (player.hitPoints <= 0) {
+            player.hitPoints = 0;
+            player.isDead = true;
+        }
+        this.handleHurtEntity(player).catch(error => {
+            this.server.commands.run(() => { throw error; }).catch(() => {});
         });
     },
 
@@ -304,6 +271,7 @@ module.exports = World = cls.Class.extend({
             if(entity) {
                 self.pushToPlayer(player, new Messages.Spawn(entity));
                 self.sendEntityInfo(entity, player);
+                if (entity.type === 'mob') self.pushToPlayer(player, self.mobAI.snapshot(entity));
             }
         });
         
@@ -378,6 +346,7 @@ module.exports = World = cls.Class.extend({
     },
     
     removeEntity: function(entity) {
+        if (entity.type === 'player') this.mobAI.forgetPlayer(entity);
         if(entity.id in this.entities) {
             delete this.entities[entity.id];
         }
@@ -414,6 +383,7 @@ module.exports = World = cls.Class.extend({
     },
     
     addMob: function(mob) {
+        this.mobAI.reset(mob);
         this.addEntity(mob);
         this.mobs[mob.id] = mob;
     },
@@ -523,28 +493,9 @@ module.exports = World = cls.Class.extend({
             player.addHater(mob);
             
             if(mob.hitPoints > 0) { // only choose a target if still alive
-                this.chooseMobTarget(mob);
+                this.mobAI.chooseTarget(mob);
             }
         }
-    },
-    
-    chooseMobTarget: function(mob, hateRank) {
-        var player = this.getEntityById(mob.getHatedPlayerId(hateRank));
-        
-        // If the mob is not already attacking the player, create an attack link between them.
-        if(player && !(mob.id in player.attackers)) {
-            this.clearMobAggroLink(mob);
-            
-            player.addAttacker(mob);
-            mob.setTarget(player);
-            
-            this.broadcastAttacker(mob);
-            log.debug(mob.id + " is now attacking " + player.id);
-        }
-    },
-    
-    onEntityAttack: function(callback) {
-        this.attack_callback = callback;
     },
     
     getEntityById: function(id) {
@@ -568,9 +519,6 @@ module.exports = World = cls.Class.extend({
     broadcastAttacker: function(character) {
         if(character) {
             this.pushToAdjacentGroups(character.group, character.attack(), character.id);
-        }
-        if(this.attack_callback) {
-            this.attack_callback(character);
         }
     },
     
@@ -645,7 +593,6 @@ module.exports = World = cls.Class.extend({
                         mob.area.addToArea(mob);
                     }
                 });
-                mob.onMove(self.onMobMoveCallback.bind(self));
                 self.addMob(mob);
                 self.tryAddingMobToChestArea(mob);
             }
@@ -663,24 +610,10 @@ module.exports = World = cls.Class.extend({
     },
     
     handlePlayerVanish: function(player) {
-        var self = this,
-            previousAttackers = [];
-        
-        // When a player dies or teleports, all of his attackers go and attack their second most hated player.
-        player.forEachAttacker(function(mob) {
-            previousAttackers.push(mob);
-            self.chooseMobTarget(mob, 2);
-        });
-        
-        _.each(previousAttackers, function(mob) {
-            player.removeAttacker(mob);
-            mob.clearTarget();
-            mob.forgetPlayer(player.id, 1000);
-        });
-        
+        this.mobAI.forgetPlayer(player);
         this.handleEntityGroupMembership(player);
     },
-    
+
     setPlayerCount: function(count) {
         this.playerCount = count;
     },
@@ -713,22 +646,6 @@ module.exports = World = cls.Class.extend({
         }
         
         return item;
-    },
-    
-    onMobMoveCallback: function(mob) {
-        this.pushToAdjacentGroups(mob.group, new Messages.Move(mob));
-        this.handleEntityGroupMembership(mob);
-    },
-    
-    findPositionNextTo: function(entity, target) {
-        var valid = false,
-            pos;
-        
-        while(!valid) {
-            pos = entity.getPositionNextTo(target);
-            valid = this.isValidPosition(pos.x, pos.y);
-        }
-        return pos;
     },
     
     initZoneGroups: function() {
@@ -850,19 +767,15 @@ module.exports = World = cls.Class.extend({
                     self.groups[id].incoming.forEach(function(entity) {
                         self.groups[id].players.forEach(function(playerId) {
                             var player = self.players[playerId];
-                            if (player) self.sendEntityInfo(entity, player);
+                            if (player) {
+                                self.sendEntityInfo(entity, player);
+                                if (entity.type === 'mob') self.pushToPlayer(player, self.mobAI.snapshot(entity));
+                            }
                         });
                     });
                     self.groups[id].incoming = [];
                 }
             });
-        }
-    },
-    
-    moveEntity: function(entity, x, y) {
-        if(entity) {
-            entity.setPosition(x, y);
-            this.handleEntityGroupMembership(entity);
         }
     },
     

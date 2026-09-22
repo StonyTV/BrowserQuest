@@ -41,6 +41,13 @@ Messages.Move = Message.extend({
     }
 });
 
+Messages.MobState = Message.extend({
+    init: function(mob, mode, stepMs, strike) {
+        this.data = [Types.Messages.MOB_STATE, mob.id, mob.x, mob.y, mob.target, mode, stepMs, mob.orientation, strike];
+    },
+    serialize: function() { return this.data; }
+});
+
 Messages.LootMove = Message.extend({
     init: function(entity, item) {
         this.entity = entity;

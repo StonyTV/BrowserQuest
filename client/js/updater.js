@@ -1,15 +1,13 @@
 
-define(['character', 'timer'], function(Character, Timer) {
+define(['character', 'mob'], function(Character, Mob) {
 
     var Updater = Class.extend({
         init: function(game) {
             this.game = game;
-            this.playerAggroTimer = new Timer(1000);
         },
 
         update: function() {
             this.updateCharacters();
-            this.updatePlayerAggro();
             this.updateTransitions();
             this.updateAnimations();
             this.updateAnimatedTiles();
@@ -33,16 +31,6 @@ define(['character', 'timer'], function(Character, Timer) {
             });
         },
         
-        updatePlayerAggro: function() {
-            var t = this.game.currentTime,
-                player = this.game.player;
-            
-            // Check player aggro every 1s when not moving nor attacking
-            if(player && !player.isMoving() && !player.isAttacking()  && this.playerAggroTimer.isOver(t)) {
-                player.checkAggro();
-            }
-        },
-    
         updateEntityFading: function(entity) {
             if(entity && entity.isFading) {
                 var duration = 1000,
@@ -74,6 +62,7 @@ define(['character', 'timer'], function(Character, Timer) {
         },
 
         updateCharacter: function(c) {
+            if (c instanceof Mob) { this.game.mobSync.update(c); return; }
             var self = this;
     
             // Estimate of the movement distance for one update

@@ -70,7 +70,6 @@ class Movement {
             state.nextAt = now + config.stepMs;
             player.zone_callback(); // Visibility follows actual tiles, never a client ZONE claim.
             player.broadcast(new Messages.Move(player));
-            player.move_callback?.(x,y);
             this.report(player, state.path.length ? 'moving' : 'arrived');
             if (!state.path.length) this.enterDoor(player);
         }

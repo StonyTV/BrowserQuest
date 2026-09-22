@@ -186,3 +186,36 @@ input[name=guildTag] { text-transform:uppercase; }
 }
 @media(prefers-reduced-motion:reduce) { #rpg-hud .hud-action:active { transform:none; } }
 .social-tab-badge { display:inline-block; min-width:14px; padding:0 3px; margin-left:6px; border:1px solid #bda16a; color:#ffe5a8; background:#6a4330; font:bold 10px/16px Verdana,sans-serif; }
+
+/* Character progression is visible in the world and detailed next to equipment. */
+#vitals { width:240px; }
+.vitals-heading, .vitals-experience-heading, .character-progression { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+#vitals-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#vitals-health-label { white-space:nowrap; color:#e4c1a0; font-size:10px; }
+.vitals-experience-heading { margin-top:8px; font-size:9px; color:#b4c9b2; }
+.experience-bar { display:block; width:100%; height:6px; border:0; background:#101b1c; accent-color:#8bb8b0; }
+.experience-bar::-webkit-progress-bar { background:#101b1c; }
+.experience-bar::-webkit-progress-value { background:linear-gradient(90deg,#426f75,#a1c6af); }
+.experience-bar::-moz-progress-bar { background:#8bb8b0; }
+#vitals-experience { margin-top:3px; }
+#party-hud { top:124px; width:190px; }
+.party-member { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:0 5px; }
+.party-member strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.party-member progress { grid-column:1/-1; }
+.party-level { color:#c4b77d; font:10px Verdana,sans-serif; }
+#character-sheet { margin-bottom:18px; padding:12px; border:1px solid #4e604c; background:#19241e; }
+.character-progression strong { color:#e9cc8e; font:21px GraphicPixel,Georgia,serif; }
+.character-progression span { color:#b5c3ac; font:10px Verdana,sans-serif; }
+#character-experience { margin-top:8px; }
+#character-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:14px 0 0; }
+#character-stats dt { color:#9da98e; font:10px Verdana,sans-serif; }
+#character-stats dd { margin:4px 0 0; color:#ecdfbd; font:19px GraphicPixel,Georgia,serif; }
+#experience-gain { position:fixed; top:24px; left:50%; transform:translateX(-50%); z-index:39999; padding:10px 16px; color:#c2dfc8; background:#1b3026ed; border:1px solid #7b9971; font:19px GraphicPixel,Georgia,serif; box-shadow:0 3px #101a13; pointer-events:none; }
+#experience-gain.level-up { color:#ffe1a0; border-color:#d4b676; background:#413f28ed; }
+#experience-gain[hidden] { display:none; }
+@media(max-width:600px), (max-height:500px) {
+    #vitals { width:215px; } #party-hud { top:106px; width:155px; }
+    #experience-gain { top:105px; max-width:calc(100vw - 40px); white-space:nowrap; font-size:15px; }
+    .character-progression { flex-wrap:wrap; gap:3px; }
+    #character-stats { gap:5px; } #character-stats dt { font-size:9px; }
+}

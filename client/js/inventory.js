@@ -1,10 +1,10 @@
-define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creation'], function(dom, items, SocialUI, ChatUI, BankUI, GuildCreation) {
+define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creation', 'ui/character'], function(dom, items, SocialUI, ChatUI, BankUI, GuildCreation, renderCharacter) {
     return function(game) {
         var panel = document.getElementById('inventory-panel');
         var toggle = document.getElementById('inventory-toggle');
         var list = document.getElementById('inventory-items');
         var details = document.getElementById('inventory-details');
-        var profile, selected, moving = false;
+        var profile, selected, moving = false, experienceTimer;
         function command(action, payload) { game.client.sendMessage([Types.Messages.COMMAND, action, payload || {}]); }
         var social = SocialUI(game, command);
         var chat = ChatUI(game, command);
@@ -38,6 +38,7 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
         });
         function move(id, slot) { moving = false; command('inventory.move', { id: id, slot: slot }); }
         function render() {
+            renderCharacter(profile);
             document.getElementById('gold-count').textContent = profile.gold.toLocaleString('fr-FR');
             document.getElementById('gold-display').setAttribute('aria-label', profile.gold + ' pièces d’or');
             document.getElementById('inventory-summary').textContent = profile.items.length + ' / ' + profile.capacity + ' cases · ' + profile.kills + ' victoires';
@@ -98,6 +99,13 @@ define(['ui/dom', 'ui/items', 'ui/social', 'ui/chat', 'ui/bank', 'ui/guild-creat
         };
         game.onEvent = function(type, data) {
             if (type === 'chat') chat.message(data);
+            else if (type === 'experience' && data.gained) {
+                var toast = document.getElementById('experience-gain');
+                toast.textContent = (data.levels ? 'Niveau ' + data.level + ' ! · ' : '') + '+' + data.gained + ' expérience';
+                toast.classList.toggle('level-up', data.levels > 0); toast.hidden = false;
+                clearTimeout(experienceTimer); experienceTimer = setTimeout(function() { toast.hidden = true; }, data.levels ? 5000 : 2500);
+                if (data.levels) chat.notice('Vous atteignez le niveau ' + data.level + '. Votre vitalité et votre puissance augmentent.');
+            }
             else if (type === 'notice') { chat.notice(data.message); creation.notice(data); }
             else if (type === 'social') {
                 social.state(data); chat.social(data);

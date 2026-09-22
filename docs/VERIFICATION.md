@@ -114,3 +114,16 @@ Les raccourcis I/G, Échap, l’activation d’un bouton HUD par Espace et la co
 Six sprites du HUD contrôlés : RGBA 32 × 32, alpha 0/255 et huit couleurs opaques au maximum. Captures inspectées : `v2-hud-desktop.png`, `v2-hud-mobile.png`, `v2-guild-draft-retained.png`, `v2-guild-mobile.png`, `v2-guild-small-height.png`. Sources et captures restent dans `output/` ; seules les icônes finales sont livrées.
 
 Toutes les fixtures navigateur utilisent `bq_qa_ui`, distincte du personnage jouable. Aucun test de charge ou de session prolongée n’a été réalisé ; les limites générales restent applicables.
+
+
+## Progression et expérience de groupe — 0.3.0-alpha.6
+
+`npm run test:mongo` : **42 tests réussis**. `npm test` : **36 réussis et 6 tests MongoDB explicitement ignorés**, avec le même parcours WebSocket sur SQLite. Les seuils des 20 niveaux, le passage de plusieurs niveaux, le plafond, les bonus et la normalisation des anciens profils sont vérifiés. Un test de récompense couvre un groupe avec membre distant, mort et plafonné : seules les parts prévues sont appliquées, l’or et la victoire restent au dernier attaquant. Une erreur de stockage n’applique ni profil en mémoire ni confirmation.
+
+Un test MongoDB provoque un conflit sur le deuxième bénéficiaire : l’écriture du premier est annulée avec toute la transaction ; une nouvelle tentative sur les bonnes révisions persiste les deux parts. Le parcours WebSocket de combat place deux membres à 35 XP, gagne une victoire à 10 XP, puis vérifie 40 XP, niveau 2, 88 PV maximum et +1 de puissance chez les deux. Un troisième client reçoit le nouveau niveau/maxHP sans recevoir leur profil privé. La commande forgée `experience.gain` est refusée. Le redémarrage réel du serveur conserve la progression.
+
+`scripts/browser-progression.js` : deux contextes Chromium forment un groupe depuis les boutons, approchent un rat par le déplacement normal, l’attaquent par clic et montent ensemble au niveau 2. Jauges du groupe, métadonnées du compagnon, fiche (88 PV, puissance 6–11), notification et reconnexion sont vérifiées sans `pageerror`. Fiche contrôlée à 390 × 844 sans débordement horizontal. Captures : `v2-level-up.png`, `v2-level-observer.png`, `v2-character-sheet.png`, `v2-character-mobile.png`.
+
+Le parcours social complet à deux navigateurs et le parcours mobile tactile du sac/déplacement ont été rejoués sur cette version, sans erreur JavaScript ni débordement.
+
+Les fixtures utilisent `bq_qa_progression`. Ces vérifications prouvent le fonctionnement de la progression, pas l’équilibrage de toute la courbe : aucune session complète du niveau 1 au niveau 20 n’a été jouée, ni campagne de charge. Classes, métiers/craft et percepteurs restent ouverts.

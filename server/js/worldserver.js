@@ -15,8 +15,9 @@ var cls = require("./lib/class"),
     Properties = require("./properties"),
     Utils = require("./utils"),
     Formulas = require("./formulas"),
-    RPG = require("./profiles"),
     Gameplay = require("./domain/gameplay"),
+    Progression = require("./domain/progression"),
+    rewardKill = require("./domain/rewards"),
     Movement = require("./domain/movement"),
     MobAI = require("./domain/mob-ai"),
     SocialContent = require("../../shared/content/social.json"),
@@ -193,7 +194,7 @@ module.exports = World = cls.Class.extend({
     },
     
     damagePlayer: function(mob, player) {
-        var defense = RPG.equipment(player.session.profile, 'armor').bonus;
+        var defense = player.combatStats().defenseBonus;
         player.hitPoints -= Math.max(0, Formulas.dmg(mob.weaponLevel, player.armorLevel) - defense);
         if (player.hitPoints <= 0) {
             player.hitPoints = 0;
@@ -210,6 +211,7 @@ module.exports = World = cls.Class.extend({
         var message = [Types.Messages.ENTITY_INFO, entity.id, {
             name: service ? service.name : entity.name || Types.getKindAsString(entity.kind),
             hp: entity.hitPoints, maxHp: entity.maxHitPoints,
+            level: entity.type === 'player' && entity.session ? Progression.status(entity.session.profile.experience).level : undefined,
             guildTag: guild ? guild.tag : '', crest: guild ? guild.crest : null,
             services: service ? service.services : []
         }];
@@ -543,11 +545,7 @@ module.exports = World = cls.Class.extend({
                 var mob = entity,
                     item = this.getDroppedItem(mob);
 
-                var profile = structuredClone(attacker.session.profile);
-                profile.kills += 1;
-                profile.gold += Utils.randomInt(1, 4) * mob.weaponLevel;
-                await attacker.saveProfile(profile);
-                attacker.syncProfile();
+                await rewardKill(this, attacker, mob);
                 this.pushToPlayer(attacker, new Messages.Kill(mob));
                 this.pushToAdjacentGroups(mob.group, mob.despawn()); // Despawn must be enqueued before the item drop
                 if(item) {

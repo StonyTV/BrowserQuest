@@ -80,3 +80,12 @@ La banque et la création de guilde exigent une ouverture de service et la proxi
 `[33,idEntite,{name,hp,maxHp,guildTag,crest,services}]` complète les entités du monde. Les métadonnées peuvent précéder SPAWN ; le client les garde par identifiant. Dégâts et régénération réémettent les PV. L’appartenance de guilde est également affichable sous le nom.
 
 Chat de zone : groupe spatial serveur de 28 × 12 cases. Commerce/recrutement : monde entier, délai de 5 secondes. Zone : 1 seconde. Groupe/guilde : 500 ms et appartenance requise. Le délai est global par personnage pour empêcher de contourner l’attente en changeant de canal. L’ancien CHAT (11) est traduit en `chat.send` de zone, soumis aux mêmes règles.
+
+
+## Expérience et niveaux
+
+Le schéma de profil 3 ajoute `experience`, entier total persistant. Les anciens profils reçoivent 0 sans modification de leurs possessions. PROFILE ajoute `progression:{level,maxLevel,current,required,healthBonus,damageBonus,defenseBonus}` et `stats:{attackBonus,defenseBonus,attackMin,attackMax,armorRank,maxHitPoints}`, calculés côté serveur. `current` et `required` concernent le niveau courant ; `required:0` indique le plafond. `attackMin/Max` expriment la puissance avant défense de la cible, pas des dégâts garantis. ENTITY_INFO et les membres des snapshots sociaux ajoutent `level` pour les joueurs. Ces champs sont des extensions additives du protocole 5.
+
+Après la sauvegarde d’une victoire, l’événement `experience` contient `{gained,levels,level}` pour chaque bénéficiaire. Aucune commande cliente ne peut accorder de l’XP ou fixer un niveau. `shared/content/progression.json` définit les seuils et bonus ; chaque espèce dans `mobs.json` déclare sa récompense d’expérience.
+
+Le pool est divisé entre l’auteur du dernier coup et les membres de son groupe vivants, connectés, à 12 cases au maximum du monstre (distance de grille Chebyshev). Le reliquat est distribué dans l’ordre, auteur du coup puis ordre des membres. Le plafond n’est pas dépassé et les parts plafonnées ne sont pas redistribuées. L’auteur du coup conserve seul l’or et le compteur de victoires. Tous les profils bénéficiaires sont enregistrés dans une transaction avant application en mémoire et envoi des confirmations. La montée augmente le maximum de PV sans soin instantané. Mort et reconnexion ne retirent aucune XP.

@@ -12,7 +12,7 @@ function createProfile(name) {
     const armor = createItem(Types.Entities.CLOTHARMOR, 0);
     weapon.slot = 0;
     armor.slot = 1;
-    return { id: randomUUID(), schemaVersion: 2, name, guildId: null, bank: { items: [], gold: 0 }, gold: 0, kills: 0, items: [weapon, armor], equipped: { weapon: weapon.id, armor: armor.id } };
+    return { id: randomUUID(), schemaVersion: 3, experience: 0, name, guildId: null, bank: { items: [], gold: 0 }, gold: 0, kills: 0, items: [weapon, armor], equipped: { weapon: weapon.id, armor: armor.id } };
 }
 function equipment(profile, slot) {
     return profile.items.find(item => item.id === profile.equipped[slot]);
@@ -32,7 +32,8 @@ function discard(profile, id) {
 }
 function normalizeProfile(profile) {
     profile.id ||= randomUUID();
-    profile.schemaVersion = 2;
+    profile.schemaVersion = 3;
+    profile.experience ??= 0;
     profile.bank ||= { items: [], gold: 0 };
     profile.guildId ||= null;
     const used = new Set();

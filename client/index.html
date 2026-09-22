@@ -52,10 +52,11 @@ Mozilla presents an HTML5 mini-MMORPG by Little Workshop http://www.littleworksh
             <button id="sound-toggle" class="hud-action" aria-label="Couper les effets sonores" aria-pressed="false"><img src="img/ui/sound.png" alt="" width="32" height="32"><span class="hud-tooltip" aria-hidden="true">Son</span></button>
             <span id="gold-display" class="hud-purse" aria-label="0 pièces d’or"><img src="img/ui/coins.png" alt="" width="32" height="32"><span id="gold-count">0</span></span>
         </nav>
-        <aside id="vitals"><strong id="vitals-label"></strong><progress id="vitals-health" aria-label="Votre vie" max="80" value="80"></progress></aside>
+        <aside id="vitals"><div class="vitals-heading"><strong id="vitals-label"></strong><span id="vitals-health-label"></span></div><progress id="vitals-health" aria-label="Votre vie" max="80" value="80"></progress><div class="vitals-experience-heading"><span>Expérience</span><span id="vitals-experience-label"></span></div><progress id="vitals-experience" class="experience-bar" aria-label="Progression du niveau" max="40" value="0"></progress></aside><div id="experience-gain" role="status" hidden></div>
         <aside id="party-hud" aria-label="Membres du groupe"></aside>
         <section id="inventory-panel" class="rpg-panel" aria-label="Inventaire" hidden>
             <header><div><small>AVENTURIER</small><h2>Équipement &amp; sac</h2></div><button id="inventory-close" class="icon-close" aria-label="Fermer le sac"><img src="img/ui/close.png" alt="" width="32" height="32"></button></header>
+            <section id="character-sheet" aria-label="Caractéristiques du personnage"><div class="character-progression"><strong id="character-level"></strong><span id="character-experience-label"></span></div><progress id="character-experience" class="experience-bar" aria-label="Expérience du personnage" max="40" value="0"></progress><dl id="character-stats"></dl></section>
             <div id="equipped-items"></div>
             <p id="inventory-summary"></p>
             <div class="inventory-layout"><div id="inventory-items"></div><aside id="inventory-details"></aside></div>

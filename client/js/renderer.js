@@ -491,6 +491,7 @@ function(Camera, Item, Character, Player) {
             this.context.font = Math.max(11, 6 * s) + 'px GraphicPixel';
             var name = isPlayer ? entity.name : info ? info.name.split(' · ')[0] : Types.getKindAsString(entity.kind);
             var color = isPlayer ? (entity.id === this.game.playerId ? '#fcda5c' : '#ffffff') : isMob ? '#e6dfc8' : '#b4e192';
+            if (isPlayer && info && info.level) name += ' · ' + info.level;
             this.drawText(name, x, y, true, color);
             if (info && info.services.length) this.drawText(info.services.includes('bank') ? 'Banque' : 'Guildes', x, y + 7 * s, true, '#d7cc98');
             if (isPlayer && info && info.guildTag) this.drawText('[' + info.guildTag + ']', x, y + 7 * s, true, '#cdb1ea');

@@ -17,7 +17,8 @@
       "weapon": 1,
       "stepMs": 350,
       "attackMs": 1000,
-      "aggroRange": 0
+      "aggroRange": 0,
+      "experience": 10
     },
     "skeleton": {
       "drops": {
@@ -31,7 +32,8 @@
       "weapon": 2,
       "stepMs": 350,
       "attackMs": 1300,
-      "aggroRange": 3
+      "aggroRange": 3,
+      "experience": 40
     },
     "goblin": {
       "drops": {
@@ -45,7 +47,8 @@
       "weapon": 1,
       "stepMs": 150,
       "attackMs": 700,
-      "aggroRange": 3
+      "aggroRange": 3,
+      "experience": 25
     },
     "ogre": {
       "drops": {
@@ -60,7 +63,8 @@
       "weapon": 2,
       "stepMs": 300,
       "attackMs": 800,
-      "aggroRange": 3
+      "aggroRange": 3,
+      "experience": 70
     },
     "spectre": {
       "drops": {
@@ -74,7 +78,8 @@
       "weapon": 4,
       "stepMs": 150,
       "attackMs": 900,
-      "aggroRange": 3
+      "aggroRange": 3,
+      "experience": 90
     },
     "deathknight": {
       "drops": {
@@ -86,7 +91,8 @@
       "weapon": 3,
       "stepMs": 220,
       "attackMs": 800,
-      "aggroRange": 4
+      "aggroRange": 4,
+      "experience": 100
     },
     "crab": {
       "drops": {
@@ -100,7 +106,8 @@
       "weapon": 1,
       "stepMs": 200,
       "attackMs": 800,
-      "aggroRange": 3
+      "aggroRange": 3,
+      "experience": 18
     },
     "snake": {
       "drops": {
@@ -114,7 +121,8 @@
       "weapon": 2,
       "stepMs": 200,
       "attackMs": 800,
-      "aggroRange": 3
+      "aggroRange": 3,
+      "experience": 50
     },
     "skeleton2": {
       "drops": {
@@ -128,7 +136,8 @@
       "weapon": 3,
       "stepMs": 200,
       "attackMs": 1300,
-      "aggroRange": 3
+      "aggroRange": 3,
+      "experience": 65
     },
     "eye": {
       "drops": {
@@ -142,7 +151,8 @@
       "weapon": 3,
       "stepMs": 200,
       "attackMs": 800,
-      "aggroRange": 3
+      "aggroRange": 3,
+      "experience": 80
     },
     "bat": {
       "drops": {
@@ -155,7 +165,8 @@
       "weapon": 1,
       "stepMs": 120,
       "attackMs": 800,
-      "aggroRange": 0
+      "aggroRange": 0,
+      "experience": 20
     },
     "wizard": {
       "drops": {
@@ -168,7 +179,8 @@
       "weapon": 6,
       "stepMs": 200,
       "attackMs": 800,
-      "aggroRange": 3
+      "aggroRange": 3,
+      "experience": 120
     },
     "boss": {
       "drops": {
@@ -179,7 +191,8 @@
       "weapon": 7,
       "stepMs": 300,
       "attackMs": 2000,
-      "aggroRange": 4
+      "aggroRange": 4,
+      "experience": 500
     }
   }
 }

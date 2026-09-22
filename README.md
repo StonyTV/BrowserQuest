@@ -1,4 +1,4 @@
-# BrowserQuest Revival — V2 sociale · jalon 0.3 alpha 5
+# BrowserQuest Revival — V2 sociale · jalon 0.3 alpha 6
 
 Reprise jouable de [Mozilla BrowserQuest](https://github.com/mozilla/BrowserQuest), dans un dépôt indépendant. Canvas 2D, JavaScript, Node et WebSocket. Le rendu pixel art et le monde original restent en place ; aucun React n'est nécessaire au moteur.
 
@@ -23,7 +23,8 @@ Pour conserver les personnages d’un ancien jalon SQLite : arrêter le jeu, ex�
 - **Ysée**, au point d’arrivée : écran de fondation centré pour 25 or, nom/sigle et aperçu du blason SVG à deux couleurs.
 - **Intendant**, à côté d’Ysée : panneau bancaire dédié, coffre de 72 objets et dépôt/retrait d’or.
 - **Entrée** : chat de zone, commerce, recrutement, groupe ou guilde. **Échap** : fermer les panneaux.
-- Chaque créature tuée rapporte de l'or. Les rats peuvent aussi lâcher de l'équipement.
+- Chaque créature vaincue rapporte de l’expérience ; 20 niveaux augmentent vitalité, puissance et résistance. Le HUD montre la progression, le sac détaille les caractéristiques.
+- En groupe, l’XP se partage entre les membres vivants à 12 cases du combat. Le joueur qui achève la créature gagne les pièces et la victoire. Les rats peuvent aussi lâcher de l’équipement.
 - Les objets ont un rang, une rareté et un bonus de dégâts ou de défense.
 
 Le sac contient 24 objets, équipement porté compris. L’or sert notamment à fonder une guilde. Les objets portés doivent être remplacés avant dépôt en banque. Les consommables s'utilisent au ramassage comme dans le jeu original.
@@ -32,7 +33,7 @@ Le HUD utilise des icônes pixel art natives : sac, compagnons et cor sonore, av
 
 ## Sauvegarde et multijoueur
 
-Nom, cases du sac, équipement, banque, or, victoires et guildes (blason, rangs et membres) sont conservés dans MongoDB, base `browserquest`, volume Docker `browserquest_mongo-data`. Le serveur crée une clé aléatoire, stockée dans ce navigateur ; seul son hash est enregistré en base. Un même personnage ne peut pas être connecté deux fois. Chaque reconnexion replace le personnage près des PNJ de guilde et de banque et restaure ses points de vie. Les groupes et leurs invitations sont temporaires ; le chef change lorsqu’il quitte le groupe. Les succès historiques restent locaux au navigateur.
+Nom, expérience, cases du sac, équipement, banque, or, victoires et guildes (blason, rangs et membres) sont conservés dans MongoDB, base `browserquest`, volume Docker `browserquest_mongo-data`. Le serveur crée une clé aléatoire, stockée dans ce navigateur ; seul son hash est enregistré en base. Un même personnage ne peut pas être connecté deux fois. Chaque reconnexion replace le personnage près des PNJ de guilde et de banque et restaure ses points de vie. Les groupes et leurs invitations sont temporaires ; le chef change lorsqu’il quitte le groupe. Les succès historiques restent locaux au navigateur.
 
 Deux fenêtres de navigation privée distinctes permettent de jouer deux personnages. Deux onglets partageant le stockage représentent le même personnage : le second est refusé. Pour un test LAN : `HOST=0.0.0.0 npm start`, puis utiliser l'IP de cette machine et le port 8085 sur les deux appareils.
 
@@ -55,9 +56,9 @@ L'ancien empaquetage `bin/build.sh` a été remplacé par les fichiers servis di
 
 ## Architecture V2 et suite
 
-Le Canvas conserve les sprites et la carte BrowserQuest. La caméra suit le personnage sur tout l’écran ; le HUD et les panneaux DOM passent au-dessus. Les vues sont séparées en `client/js/ui/{items,social,chat,bank,guild-creation,crest-editor,dom}.js`, avec un rendu SVG autonome pour les blasons. Le serveur regroupe les règles dans `server/js/domain/{gameplay,social,bank,rules,movement,mob-ai}.js`. Coûts, capacités, canaux et services sont déclarés dans `shared/content/social.json`.
+Le Canvas conserve les sprites et la carte BrowserQuest. La caméra suit le personnage sur tout l’écran ; le HUD et les panneaux DOM passent au-dessus. Les vues sont séparées en `client/js/ui/{items,social,chat,bank,guild-creation,crest-editor,character,dom}.js`, avec un rendu SVG autonome pour les blasons. Le serveur regroupe les règles dans `server/js/domain/{gameplay,social,bank,rules,movement,mob-ai,progression,rewards}.js`. Coûts, capacités, canaux et services sont déclarés dans `shared/content/social.json`.
 
-Ce jalon valide le socle social ; **le goal V2 reste actif**. MongoDB est le stockage par défaut, avec migration et transactions vérifiées. Les chemins des joueurs sont validés et exécutés par le serveur ; le client conserve une animation prédictive. Les monstres détectent, poursuivent et attaquent côté serveur. Progression/classes, métiers/craft et percepteurs restent à réaliser. [Le suivi V2](docs/V2.md) distingue les preuves obtenues et le travail restant.
+Ce jalon valide le socle social ; **le goal V2 reste actif**. MongoDB est le stockage par défaut, avec migration et transactions vérifiées. Les chemins des joueurs sont validés et exécutés par le serveur ; le client conserve une animation prédictive. Les monstres détectent, poursuivent et attaquent côté serveur. Les niveaux et l’expérience partagée sont implémentés. Classes, métiers/craft et percepteurs restent à réaliser. [Le suivi V2](docs/V2.md) distingue les preuves obtenues et le travail restant.
 
 `shared/content/movement.json` définit la vitesse et les limites des routes. `server/js/domain/movement.js` possède les positions réelles, avec prédiction et correction dans `client/js/movement.js`. `scripts/browser-movement.js` vérifie les changements de direction, la position vue par un autre joueur et les portes ; une variante avec 150 ms de délai sortant a également été vérifiée.
 
@@ -66,6 +67,10 @@ Ce jalon valide le socle social ; **le goal V2 reste actif**. MongoDB est le sto
 Pour reproduire le combat multijoueur isolé : `node scripts/prepare-combat-qa.js`, `PORT=8086 MONGODB_DATABASE=bq_qa_ai npm start`, puis exécuter `output/browser-combat-run.js` avec Playwright CLI. Deux personnages vérifient poursuite, retour, agression autonome et déconnexion ; les fixtures sont limitées aux bases `bq_qa_`.
 
 Pour reproduire le parcours visuel isolé : `node scripts/prepare-social-qa.js`, puis dans un autre terminal `PORT=8086 MONGODB_DATABASE=bq_qa_social npm start`. Exécuter la fonction générée `output/browser-social-run.js` avec Playwright CLI `run-code`, puis `scripts/browser-mobile.js`. Pour vérifier la fondation (brouillon multijoueur, erreurs, double soumission et mobile), relancer la préparation puis exécuter `output/browser-guild-ui-run.js`. Chaque parcours requiert ses personnages neufs. La préparation injecte seulement des personnages dans la base MongoDB `bq_qa_social` ; les identifiants des fixtures restent dans `output/`, ignoré par Git.
+
+`shared/content/progression.json` contient les seuils des 20 niveaux, bonus et rayon de partage. Chaque monstre déclare son expérience dans `mobs.json`. Le niveau se déduit de l’XP totale persistée ; le serveur calcule également les statistiques. Les anciens profils démarrent à 0 XP sans convertir leurs victoires historiques. Une montée de niveau augmente le maximum de vie sans soigner les blessures actuelles ; le niveau n’est pas perdu à la mort.
+
+Parcours de progression isolé : `node scripts/prepare-progression-qa.js`, `PORT=8086 MONGODB_DATABASE=bq_qa_progression npm start`, puis `output/browser-progression-run.js` avec Playwright CLI. Deux personnages proches du niveau 2 forment un groupe, combattent et vérifient leur progression, leur fiche et leur reconnexion.
 
 ## Documents
 

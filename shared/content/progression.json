@@ -1,0 +1,7 @@
+{
+  "thresholds": [0, 40, 110, 220, 380, 600, 900, 1300, 1800, 2400, 3100, 3900, 4800, 5800, 6900, 8100, 9400, 10800, 12300, 14000],
+  "healthPerLevel": 8,
+  "damagePerLevel": 1,
+  "levelsPerDefense": 4,
+  "partyRadius": 12
+}

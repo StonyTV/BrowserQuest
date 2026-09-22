@@ -54,6 +54,7 @@ define(['ui/dom', 'ui/crest-editor', 'heraldry', 'text!../../../shared/content/s
         function partyView() {
             section('Compagnons de route');
             if (!state.party) { content.append(dom.node('p', 'Invitez un joueur depuis l’onglet Joueurs pour former un groupe de cinq aventuriers.')); return; }
+            content.append(dom.node('p', 'L’expérience se partage entre les membres vivants proches du combat. Les pièces et la victoire reviennent au joueur qui achève la créature.', 'muted'));
             state.party.members.forEach(function(member) {
                 var row = dom.node('div', '', 'social-row');
                 row.append(dom.node('strong', member.name + (member.id === state.party.leader ? ' · Chef' : '')));
@@ -106,7 +107,7 @@ define(['ui/dom', 'ui/crest-editor', 'heraldry', 'text!../../../shared/content/s
                 var group = document.getElementById('party-hud'); group.replaceChildren();
                 if (state.party) state.party.members.forEach(function(member) {
                     var row = dom.node('div', '', 'party-member'); row.dataset.entityId = member.entityId;
-                    row.append(dom.node('strong', member.name));
+                    row.append(dom.node('strong', member.name), dom.node('small', 'Niv. ' + member.level, 'party-level'));
                     var hp = dom.node('progress'); hp.max = member.maxHp; hp.value = member.hp;
                     hp.setAttribute('aria-label', 'Vie de ' + member.name); row.append(hp); group.append(row);
                 });

@@ -9,7 +9,7 @@ const path = require('node:path');
 const directory = mkdtempSync(path.join(tmpdir(), 'browserquest-test-'));
 const mongo = process.env.BQ_TEST_MONGO === '1';
 const database = 'bq_test_runtime_' + process.pid + '_' + Date.now();
-let child, base, restartProof;
+let child, base, restartProof, progressionProof;
 async function openStore() {
     if (mongo) {
         const { MongoProfileStore } = require('../server/js/storage/mongo');
@@ -195,15 +195,28 @@ test('loot is collected once, equipment is owned, and reconnect restores the bag
     duplicate.send([0, 'Duplicate', 21, 60, profile.token]);
     assert.equal((await rejected)[0], 1008);
 });
-test('server schedules creature damage and rewards a kill exactly once', async () => {
-    const hero = await connect('Fighter');
+test('server combat grants one shared level-up and synchronizes stats with both players and an observer', async () => {
+    const store = await openStore();
+    const sessions = [];
+    for (const name of ['Fighter', 'Ally']) {
+        const session = await store.open('', name); session.profile.experience = 35;
+        await store.save(session); sessions.push(session);
+    }
+    await store.close();
+    const hero = await connect('Fighter', sessions[0].token);
+    const ally = await connect('Ally', sessions[1].token);
+    const observer = await connect('Observer');
+    hero.send([31, 'party.invite', {id:ally.profile.id}]);
+    const invitation = (await waitFor(ally, message => message[0] === 32 && message[1] === 'social' && message[2].invitations.length))[2].invitations[0];
+    ally.send([31, 'invitation.answer', {id:invitation.id,accept:true}]);
+    await waitFor(hero, message => message[0] === 32 && message[1] === 'social' && message[2].party?.members.length === 2);
     const list = await waitFor(hero, message => message[0] === 19);
     hero.send([20, ...list.slice(1)]);
     const rat = await waitFor(hero, message => message[0] === 2 && message[2] === 2);
     const map = require('../server/maps/world_server.json');
     const adjacent = [[rat[3] + 1, rat[4]], [rat[3] - 1, rat[4]], [rat[3], rat[4] + 1], [rat[3], rat[4] - 1]]
         .find(([x,y]) => !map.collisions.includes(y * map.width + x));
-    await moveTo(hero, ...adjacent);
+    await Promise.all([moveTo(hero, ...adjacent), moveTo(ally, ...adjacent), moveTo(observer, ...adjacent)]);
     hero.send([6, rat[1]]); // Legacy AGGRO must not provoke a passive animal.
     await new Promise(resolve => setTimeout(resolve, 400));
     assert.equal(hero.messages.some(message => message[0] === 36 && message[1] === rat[1] && message[4] === hero.welcome[1]), false);
@@ -217,6 +230,17 @@ test('server schedules creature damage and rewards a kill exactly once', async (
     await waitFor(hero, message => message[0] === 18);
     const profile = (await waitFor(hero, message => message[0] === 27))[1];
     assert.equal(profile.kills, 1);
+    assert.equal(profile.experience, 40); assert.equal(profile.progression.level, 2);
+    assert.equal(profile.maxHitPoints, 88); assert.equal(profile.stats.attackBonus, 1);
+    const allyProfile = (await waitFor(ally, message => message[0] === 27))[1];
+    assert.equal(allyProfile.experience, 40); assert.equal(allyProfile.progression.level, 2);
+    assert.equal(allyProfile.maxHitPoints, 88); assert.equal(allyProfile.gold, 0); assert.equal(allyProfile.kills, 0);
+    const info = (await waitFor(observer, message => message[0] === 33 && message[1] === hero.welcome[1] && message[2].level === 2))[2];
+    assert.equal(info.maxHp, 88);
+    assert.equal(observer.messages.some(message => message[0] === 27), false);
+    ally.send([31, 'experience.gain', {amount:14000}]);
+    assert.match((await waitFor(ally, message => message[0] === 32 && message[1] === 'notice'))[2].message, /inconnue/);
+    progressionProof = {token:sessions[1].token, experience:40, level:2, maxHitPoints:88};
     assert.ok(profile.gold >= 1 && profile.gold <= 4);
     hero.send([8, rat[1]]);
     await new Promise(resolve => setTimeout(resolve, 80));
@@ -387,6 +411,11 @@ test('server restart restores the character, bank and guild for the same browser
     assert.equal(social.guild.crest.symbol, 'stag');
     assert.equal(social.party, null);
     assert.equal((await (await fetch(base + '/status')).json()).storage, mongo ? 'mongodb' : 'sqlite');
+    const ally = await connect('Ignored', progressionProof.token);
+    assert.equal(ally.profile.experience, progressionProof.experience);
+    assert.equal(ally.profile.progression.level, progressionProof.level);
+    assert.equal(ally.profile.maxHitPoints, progressionProof.maxHitPoints);
+    assert.equal(ally.profile.stats.attackBonus, 1);
 });
 
 test('a real storage conflict stops the server without acknowledging or overwriting the command', {skip:!mongo}, async () => {

@@ -770,6 +770,8 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                 self.entityInfo[data[1]] = data[2];
                 var bar = document.querySelector('.party-member[data-entity-id="' + data[1] + '"] progress');
                 if (bar) { bar.max = data[2].maxHp; bar.value = data[2].hp; }
+                var level = document.querySelector('.party-member[data-entity-id="' + data[1] + '"] .party-level');
+                if (level) level.textContent = 'Niv. ' + data[2].level;
             };
             this.client.handlers[Types.Messages.PROFILE] = function(data) {
                 if (self.onProfile) self.onProfile(data[1]);
@@ -2009,7 +2011,9 @@ function(InfoManager, BubbleManager, Renderer, Map, Animation, Sprite, AnimatedT
                 var bar = document.getElementById('vitals-health');
                 if (bar) { bar.max = this.player.maxHitPoints; bar.value = this.player.hitPoints; }
                 var label = document.getElementById('vitals-label');
-                if (label) label.textContent = this.player.name + ' · ' + this.player.hitPoints + ' / ' + this.player.maxHitPoints;
+                if (label) label.textContent = this.player.name + ' · Niv. ' + (this.profile ? this.profile.progression.level : 1);
+                var healthLabel = document.getElementById('vitals-health-label');
+                if (healthLabel) healthLabel.textContent = this.player.hitPoints + ' / ' + this.player.maxHitPoints;
             }
             if(this.player && this.playerhp_callback) {
                 this.playerhp_callback(this.player.hitPoints, this.player.maxHitPoints);

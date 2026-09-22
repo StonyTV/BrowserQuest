@@ -1,6 +1,7 @@
 const { randomUUID } = require('node:crypto');
 const { requireRule, text } = require('./rules');
 const config = require('../../../shared/content/social.json');
+const Progression = require('./progression');
 
 class Social {
     constructor(world) {
@@ -25,7 +26,7 @@ class Social {
         if (draft) { player.session = draft; player.syncProfile(); }
     }
     member(player) {
-        return { id: this.profile(player).id, entityId: player.id, name: player.name, hp: player.hitPoints, maxHp: player.maxHitPoints, guildTag: this.guild(player)?.tag || '' };
+        return { id: this.profile(player).id, entityId: player.id, name: player.name, level: Progression.status(this.profile(player).experience).level, hp: player.hitPoints, maxHp: player.maxHitPoints, guildTag: this.guild(player)?.tag || '' };
     }
     publish() {
         const online = this.players();

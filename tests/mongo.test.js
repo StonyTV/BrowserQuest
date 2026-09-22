@@ -98,3 +98,21 @@ test('migration refuses a populated target without importing any partial state',
     assert.equal(await store.db.collection('profiles').countDocuments(), 1);
     assert.equal(await store.db.collection('migrations').countDocuments(), 0);
 });
+
+
+test('Mongo rolls back every party reward when the second character has a stale revision', enabled, async t => {
+    const store = await fixture(t);
+    const hero = await store.open('', 'Killer'), ally = await store.open('', 'Ally');
+    const drafts = [hero, ally].map(session => ({...session, profile:structuredClone(session.profile)}));
+    drafts[0].profile.experience = 5; drafts[0].profile.gold = 3; drafts[0].profile.kills = 1;
+    drafts[1].profile.experience = 5;
+    ally.profile.gold = 7; await store.save(ally);
+    await assert.rejects(store.commit(drafts), /stale save/);
+    assert.deepEqual((await store.open(hero.token)).profile, hero.profile);
+    assert.deepEqual((await store.open(ally.token)).profile, ally.profile);
+    assert.equal(drafts[0].revision, hero.revision);
+    const fresh = await store.open(ally.token); fresh.profile.experience = 5;
+    await store.commit([drafts[0], fresh]);
+    assert.equal((await store.open(hero.token)).profile.experience, 5);
+    assert.equal((await store.open(ally.token)).profile.experience, 5);
+});

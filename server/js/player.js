@@ -6,6 +6,7 @@ var cls = require("./lib/class"),
     Properties = require("./properties"),
     RPG = require("./profiles"),
     Formulas = require("./formulas"),
+    Progression = require("./domain/progression"),
     check = require("./format").check,
     Types = require("../../shared/js/gametypes");
 
@@ -125,7 +126,7 @@ module.exports = Player = Character.extend({
                 var mob = self.server.getEntityById(message[1]);
                 if(mob && mob.type === 'mob' && mob.hitPoints > 0 && mob.ai.mode !== 'returning' && self.server.mobAI.canHit(self, mob) && Date.now() - (self.lastHit || 0) >= 600) {
                     self.lastHit = Date.now();
-                    var dmg = Formulas.dmg(self.weaponLevel, mob.armorLevel) + RPG.equipment(self.session.profile, 'weapon').bonus;
+                    var dmg = Formulas.dmg(self.weaponLevel, mob.armorLevel) + self.combatStats().attackBonus;
                     
                     if(dmg > 0) {
                         mob.receiveDamage(dmg, self.id);
@@ -235,8 +236,21 @@ module.exports = Player = Character.extend({
     applyEquipment: function() {
         this.equipArmor(RPG.equipment(this.session.profile, 'armor').kind);
         this.equipWeapon(RPG.equipment(this.session.profile, 'weapon').kind);
-        this.maxHitPoints = Formulas.hp(this.armorLevel);
-        this.hitPoints = Math.min(this.hitPoints || this.maxHitPoints, this.maxHitPoints);
+        this.maxHitPoints = this.combatStats().maxHitPoints;
+        this.hitPoints = Math.min(this.hitPoints ?? this.maxHitPoints, this.maxHitPoints);
+    },
+
+    combatStats: function() {
+        var profile = this.session.profile, progression = Progression.status(profile.experience);
+        var attackBonus = RPG.equipment(profile, 'weapon').bonus + progression.damageBonus;
+        return {
+            attackBonus: attackBonus,
+            defenseBonus: RPG.equipment(profile, 'armor').bonus + progression.defenseBonus,
+            attackMin: this.weaponLevel * 5 + attackBonus,
+            attackMax: this.weaponLevel * 10 + attackBonus,
+            armorRank: this.armorLevel,
+            maxHitPoints: Formulas.hp(this.armorLevel) + progression.healthBonus
+        };
     },
 
     saveProfile: async function(profile) {
@@ -246,7 +260,7 @@ module.exports = Player = Character.extend({
     },
 
     syncProfile: function() {
-        this.send([Types.Messages.PROFILE, { token: this.session.token, capacity: RPG.CAPACITY, maxHitPoints: this.maxHitPoints, hitPoints: this.hitPoints, ...this.session.profile }]);
+        this.send([Types.Messages.PROFILE, { token: this.session.token, capacity: RPG.CAPACITY, maxHitPoints: this.maxHitPoints, hitPoints: this.hitPoints, ...this.session.profile, progression: Progression.status(this.session.profile.experience), stats: this.combatStats() }]);
         this.server.sendEntityInfo(this);
     },
 
@@ -355,7 +369,7 @@ module.exports = Player = Character.extend({
     },
     
     updateHitPoints: function() {
-        this.resetHitPoints(Formulas.hp(this.armorLevel));
+        this.resetHitPoints(this.combatStats().maxHitPoints);
     },
     
     updatePosition: function() {
